@@ -17,7 +17,7 @@ button:disabled{opacity:.5}.muted{color:var(--muted)}#status{white-space:pre-wra
 <section><h2>Connect to GitHub</h2>
 <label for="token">Fine-grained GitHub token (Contents: read/write, this repository only)</label>
 <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Paste token for this session">
-<button type="button" id="connect">Check access</button><button type="button" id="disconnect">Clear token</button>
+<button type="button" id="connect">Check access</button><button type="button" id="diagnose">Run connection diagnostics</button><button type="button" id="disconnect">Clear token</button>
 <p id="connection" class="muted">Not connected</p></section>
 <section><h2>Posts and game pages</h2>
 <label for="kind">Content type</label><select id="kind"><option value="posts">Development post</option><option value="games">Game page</option></select>
@@ -35,7 +35,7 @@ button:disabled{opacity:.5}.muted{color:var(--muted)}#status{white-space:pre-wra
 <label for="files">Select files</label><input id="files" type="file" multiple>
 <label for="folderfiles">Or select a folder</label><input id="folderfiles" type="file" webkitdirectory multiple>
 <button type="button" id="upload">Upload selected demo files</button></section>
-<section><h2>Activity</h2><p id="status" role="status">Ready.</p></section>
+<section><h2>Connection diagnostics</h2><p class="muted">Tests public API access and authenticated access separately. No repository changes are made. Never share your token.</p><pre id="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere">Not run yet.</pre></section><section><h2>Activity</h2><p id="status" role="status">Ready.</p></section>
 </main><script>
 (()=>{
 'use strict';
@@ -154,6 +154,41 @@ $('connect').onclick=()=>run(async()=>{
   say('GitHub authenticated successfully. Loading content…');
   try{await refresh()}catch(e){say('Connected, but could not load content: '+networkMessage(e))}
  }catch(e){$('connection').textContent='Not connected';throw e}
+});
+
+async function probe(label,url,opts){
+ const start=performance.now();
+ try {
+  const res=await fetch(url,{mode:'cors',cache:'no-store',...opts});
+  return label+': HTTP '+res.status+' ('+Math.round(performance.now()-start)+' ms)'+
+   (res.ok?' — response received':' — GitHub returned an error');
+ } catch(e){
+  return label+': NETWORK/BROWSER ERROR — '+(e.message||String(e))+
+   '. No HTTP response visible to JavaScript.';
+ }
+}
+$('diagnose').onclick=()=>run(async()=>{
+ const target='https://api.github.com/repos/'+owner+'/'+repo;
+ const lines=['Testing GitHub API from this page (no changes will be made).'];
+ const out=$('diagnostics');
+ out.textContent=lines.join('\n');
+ lines.push(await probe('1. Public API without token',target));
+ out.textContent=lines.join('\n');
+ const candidate=$('token').value.trim()||token;
+ if(!candidate){
+  lines.push('2. Authenticated API: skipped. Paste your token above, then run diagnostics again.');
+ }else{
+  lines.push(await probe('2. Authenticated API',target,{
+   headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+candidate}
+  }));
+  out.textContent=lines.join('\n');
+  lines.push(await probe('3. Authenticated API with version header',target,{
+   headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+candidate,'X-GitHub-Api-Version':'2022-11-28'}
+  }));
+ }
+ lines.push('Interpretation: If test 1 succeeds but tests 2 and 3 fail before HTTP, inspect browser CORS/preflight or network policy. If test 2 succeeds but 3 fails, the extra version header is implicated. HTTP 401/403/404 means GitHub responded, so investigate authorization instead.');
+ out.textContent=lines.join('\n');
+ say('Diagnostics finished. Share the result text, but never share your token.');
 });
 $('disconnect').onclick=()=>{token='';$('token').value='';$('connection').textContent='Not connected';say('Token cleared from this page session')};
 $('kind').onchange=()=>run(async()=>{setKind();if(token)await refresh()});
