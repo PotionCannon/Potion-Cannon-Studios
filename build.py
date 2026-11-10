@@ -1,142 +1,162 @@
 from pathlib import Path
-import html
-import shutil
-from urllib.parse import urlsplit
+from datetime import datetime, timezone
+from collections import defaultdict
+from urllib.parse import urlsplit, quote
+import html, re, shutil
 
-r = Path(__file__).resolve().parent
-out = r / '_site'
-if out.exists():
-    shutil.rmtree(out)
+r=Path(__file__).resolve().parent
+out=r/'_site'
+if out.exists(): shutil.rmtree(out)
 out.mkdir(parents=True)
-if (r / 'assets').is_dir():
-    shutil.copytree(r / 'assets', out / 'assets')
+if (r/'assets').is_dir(): shutil.copytree(r/'assets',out/'assets')
 
 def parse(path):
-    s = path.read_text(encoding='utf-8')
-    parts = s.split('---', 2)
-    if len(parts) < 3:
-        return {}, s.strip()
-    m = {}
+    s=path.read_text(encoding='utf-8')
+    parts=s.split('---',2)
+    if len(parts)<3:return {},s.strip()
+    m={}
     for line in parts[1].strip().splitlines():
         if ':' in line:
-            k, v = line.split(':', 1)
-            m[k.strip()] = v.strip().strip('"').strip("'")
-    return m, parts[2].strip()
+            k,v=line.split(':',1)
+            m[k.strip()]=v.strip().strip('"').strip("'")
+    return m,parts[2].strip()
 
-def page(title, body, depth=0):
-    prefix = '../' * depth
-    nav = ' '.join(
-        '<a href="' + prefix + x + '.html">' + x.title() + '</a>'
-        for x in ['index', 'games', 'blog', 'about', 'contact']
-    )
-    return (
-        '<!doctype html><html><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        '<title>' + html.escape(title) + '</title>'
-        '<link rel="stylesheet" href="' + prefix + 'assets/style.css">'
-        '<link rel="icon" href="' + prefix + 'assets/icon.png">'
-        '</head><body><header><nav class="wrap"><b>Potion Cannon Studios</b><div>'
-        + nav + '</div></nav></header><main class="wrap">' + body
-        + '</main><footer class="wrap">Potion Cannon Studios</footer></body></html>'
-    )
+def page(title,body,depth=0):
+    prefix='../'*depth
+    nav=' '.join('<a href="'+prefix+x+'.html">'+x.title()+'</a>' for x in ['index','games','blog','about','contact'])
+    return ('<!doctype html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            '<title>'+html.escape(title)+'</title>'
+            '<link rel="stylesheet" href="'+prefix+'assets/style.css">'
+            '<link rel="icon" href="'+prefix+'assets/icon.png">'
+            '</head><body><header><nav class="wrap"><b>Potion Cannon Studios</b><div>'
+            +nav+'</div></nav></header><main class="wrap">'+body+
+            '</main><footer class="wrap">Potion Cannon Studios</footer></body></html>')
 
-def save(name, title, body):
-    p = out / name
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(page(title, body, len(Path(name).parts)-1), encoding='utf-8')
+def save(name,title,body):
+    p=out/name
+    p.parent.mkdir(parents=True,exist_ok=True)
+    p.write_text(page(title,body,len(Path(name).parts)-1),encoding='utf-8')
 
 def demo_url(value):
-    """Only allow demo files in assets/demos, not external or traversal URLs."""
-    value = value.strip().replace('\\', '/').lstrip('/')
-    if not value:
-        return None
-    if value.startswith('assets/demos/'):
-        value = value[len('assets/demos/'):]
-    elif value.startswith('demos/'):
-        value = value[len('demos/'):]
-    if not value or any(x in ('', '.', '..') for x in value.split('/')):
-        return None
-    if not value.lower().endswith('.html') or '?' in value or '#' in value:
-        return None
-    source = (r / 'assets' / 'demos' / value).resolve()
-    root = (r / 'assets' / 'demos').resolve()
+    value=value.strip().replace('\\','/').lstrip('/')
+    if value.startswith('assets/demos/'):value=value[len('assets/demos/'):]
+    elif value.startswith('demos/'):value=value[len('demos/'):]
+    if not value or any(x in ('','.','..') for x in value.split('/')) or not value.lower().endswith('.html') or '?' in value or '#' in value:return None
+    source=(r/'assets'/'demos'/value).resolve()
+    root=(r/'assets'/'demos').resolve()
     if not source.is_relative_to(root) or not source.is_file():
-        print('Warning: demo file missing or invalid:', value)
+        print('Warning: demo file missing or invalid:',value)
         return None
-    return '../assets/demos/' + '/'.join(
-        __import__('urllib.parse', fromlist=['quote']).quote(part, safe='')
-        for part in value.split('/')
+    return '../assets/demos/'+'/'.join(quote(part,safe='') for part in value.split('/'))
+
+def demo_player(url,title):
+    safe_url=html.escape(url,quote=True)
+    safe_title=html.escape(title,quote=True)
+    return (
+      '<section class="section game-demo" id="demo"><h2>Playable Demo</h2>'
+      '<button type="button" class="btn demo-button" id="demo-launch">Play Demo</button>'
+      '<div id="demo-shell" hidden>'
+      '<iframe id="demo-frame" title="'+safe_title+' demo" data-src="'+safe_url+'" '
+      'allow="fullscreen; autoplay; gamepad" allowfullscreen></iframe>'
+      '<div class="demo-actions">'
+      '<button type="button" class="btn demo-button" id="demo-fullscreen">Fullscreen</button>'
+      '<button type="button" class="btn demo-button" id="demo-close">Close Demo</button></div></div>'
+      '</section><script>(function(){'
+      'const shell=document.getElementById("demo-shell");'
+      'const frame=document.getElementById("demo-frame");'
+      'document.getElementById("demo-launch").addEventListener("click",function(){'
+      'shell.hidden=false;if(!frame.src)frame.src=frame.dataset.src;'
+      'shell.scrollIntoView({behavior:"smooth",block:"nearest"});});'
+      'document.getElementById("demo-close").addEventListener("click",function(){'
+      'if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});'
+      'frame.removeAttribute("src");shell.hidden=true;});'
+      'document.getElementById("demo-fullscreen").addEventListener("click",function(){'
+      'if(shell.requestFullscreen)shell.requestFullscreen().catch(()=>{});});'
+      'document.addEventListener("fullscreenchange",function(){'
+      'shell.classList.toggle("is-fullscreen",document.fullscreenElement===shell);});'
+      '})();</script>'
     )
 
-def demo_player(url, title):
-    safe_url = html.escape(url, quote=True)
-    safe_title = html.escape(title, quote=True)
-    return (
-        '<section class="section game-demo" id="demo">'
-        '<h2>Playable Demo</h2>'
-        '<button type="button" id="demo-launch">Play Demo</button>'
-        '<div id="demo-shell" hidden style="position:relative;margin-top:1rem;'
-        'background:#000;aspect-ratio:16/9;max-height:80vh">'
-        '<iframe id="demo-frame" title="' + safe_title + ' demo" '
-        'data-src="' + safe_url + '" allow="fullscreen; autoplay; gamepad" '
-        'allowfullscreen style="width:100%;height:100%;border:0;display:block"></iframe>'
-        '<div style="position:absolute;right:8px;top:8px;z-index:2;display:flex;gap:8px">'
-        '<button type="button" id="demo-fullscreen">Fullscreen</button>'
-        '<button type="button" id="demo-close">Close Demo</button></div></div>'
-        '</section><script>(function(){'
-        'const shell=document.getElementById("demo-shell");'
-        'const frame=document.getElementById("demo-frame");'
-        'document.getElementById("demo-launch").addEventListener("click",function(){'
-        'shell.hidden=false;if(!frame.src)frame.src=frame.dataset.src;'
-        'shell.scrollIntoView({behavior:"smooth",block:"nearest"});});'
-        'document.getElementById("demo-close").addEventListener("click",function(){'
-        'if(document.fullscreenElement)document.exitFullscreen();'
-        'frame.removeAttribute("src");shell.hidden=true;});'
-        'document.getElementById("demo-fullscreen").addEventListener("click",function(){'
-        'if(shell.requestFullscreen) shell.requestFullscreen();});'
-        'document.addEventListener("fullscreenchange",function(){'
-        'const full=document.fullscreenElement===shell;'
-        'shell.style.maxHeight=full?"none":"80vh";'
-        'shell.style.height=full?"100vh":"";'
-        'shell.style.aspectRatio=full?"auto":"16/9";'
-        '});'
-        '})();</script>'
-    )
+# Safe, deliberately small Markdown renderer for admin-created post bodies.
+# Escapes user HTML before adding supported Markdown formatting.
+image_pattern=re.compile(r'!\[([^\]\n]*)\]\((https?://[^\s)]+|/[^\s)]+|(?:\.\./)*assets/[^\s)]+)\)')
+link_pattern=re.compile(r'(?<!!)\[([^\]\n]+)\]\((https?://[^\s)]+)\)')
+def inline_md(text):
+    text=html.escape(text)
+    def img(m):
+        url=html.unescape(m.group(2))
+        parsed=urlsplit(url)
+        if parsed.scheme and parsed.scheme not in ('https','http'):return m.group(0)
+        return '<img loading="lazy" src="'+html.escape(url,quote=True)+'" alt="'+m.group(1)+'">'
+    text=image_pattern.sub(img,text)
+    text=link_pattern.sub(lambda m:'<a href="'+html.escape(html.unescape(m.group(2)),quote=True)+'" rel="noopener noreferrer">'+m.group(1)+'</a>',text)
+    return text
+
+def markdown_body(source):
+    blocks=[]
+    for para in re.split(r'\n\s*\n',source.strip()):
+        if not para.strip():continue
+        lines=para.splitlines()
+        if len(lines)==1 and re.match(r'^#{1,3} ',lines[0]):
+            match=re.match(r'^(#{1,3}) (.*)',lines[0])
+            level=len(match.group(1))
+            blocks.append(f'<h{level}>'+inline_md(match.group(2))+f'</h{level}>')
+        else:
+            blocks.append('<p>'+ '<br>'.join(inline_md(x) for x in lines)+'</p>')
+    return ''.join(blocks)
+
+def get_date(meta,path):
+    for key in ('date','created','created_at'):
+        value=meta.get(key,'')
+        if value:
+            try:return datetime.fromisoformat(value.replace('Z','+00:00')).date()
+            except ValueError:pass
+    # For old game entries without a date, use their file's creation-time
+    # if available; otherwise use modification-time.
+    st=path.stat()
+    timestamp=getattr(st,'st_birthtime',None) or st.st_mtime
+    return datetime.fromtimestamp(timestamp,timezone.utc).date()
 
 def listing(kind):
-    cards = []
-    directory = r / 'content' / kind
-    for f in sorted(directory.glob('*.md'), reverse=True):
-        m, b = parse(f)
-        if kind == 'posts' and m.get('published') != 'true':
-            continue
-        title = html.escape(m.get('title', f.stem))
-        summary = html.escape(m.get('summary', ''))
-        cards.append(
-            '<div class="card"><h3><a href="' + kind + '/' + f.stem
-            + '.html">' + title + '</a></h3><p>' + summary + '</p></div>'
-        )
-        body = (
-            '<article class="article"><h1>' + title
-            + '</h1><p class="muted">'
-            + html.escape(m.get('date', m.get('status', '')))
-            + '</p>' + ''.join('<p>' + html.escape(x) + '</p>' for x in b.split('\n\n'))
-            + '</article>'
-        )
-        if kind == 'games':
-            requested = m.get('demo', '')
-            if requested:
-                url = demo_url(requested)
-                if url:
-                    body += demo_player(url, m.get('title', f.stem))
-        save(kind + '/' + f.stem + '.html', title, body)
-    return '<div class="grid">' + ''.join(cards) + '</div>'
+    entries=[]
+    directory=r/'content'/kind
+    if not directory.is_dir():return '<p class="muted">Nothing published yet.</p>'
+    for f in directory.glob('*.md'):
+        m,b=parse(f)
+        if kind=='posts' and m.get('published')!='true':continue
+        date=get_date(m,f)
+        title=html.escape(m.get('title',f.stem))
+        summary=html.escape(m.get('summary',''))
+        href=kind+'/'+quote(f.stem,safe='')+'.html'
+        entries.append((date,f.stem,title,summary,href))
+        article=('<article class="article"><h1>'+title+'</h1>'
+                 '<p class="muted">'+html.escape(date.strftime('%B %d, %Y'))+'</p>'
+                 +markdown_body(b)+'</article>')
+        if kind=='games' and m.get('demo'):
+            url=demo_url(m['demo'])
+            if url:article+=demo_player(url,m.get('title',f.stem))
+        save(kind+'/'+f.stem+'.html',m.get('title',f.stem),article)
+    entries.sort(key=lambda x:(x[0],x[1]),reverse=True)
+    if not entries:return '<p class="muted">Nothing published yet.</p>'
+    groups=defaultdict(list)
+    for entry in entries:groups[entry[0].strftime('%B %Y')].append(entry)
+    sections=[]
+    for month,items in groups.items():
+        cards=[]
+        for date,stem,title,summary,href in items:
+            cards.append('<article class="card timeline-card"><time datetime="'+date.isoformat()+'">'+
+                         html.escape(date.strftime('%b %d, %Y'))+'</time><h3><a href="'+
+                         html.escape(href,quote=True)+'">'+title+'</a></h3><p>'+summary+'</p></article>')
+        sections.append('<section class="timeline-month"><h2 class="month-divider"><span>'+
+                        html.escape(month)+'</span></h2><div class="timeline-cards">'+''.join(cards)+'</div></section>')
+    return '<div class="timeline-scroll" tabindex="0" aria-label="'+('Game posts' if kind=='games' else 'Development posts')+'">'+''.join(sections)+'</div>'
 
-games = listing('games')
-posts = listing('posts')
-save('index.html', 'Home', '<section class="hero"><img src="assets/logo.png" alt="Potion Cannon Studios"><h1>Independent games. Creative experiments.</h1><p>Explore our games and follow our development journey.</p></section><section class="section"><h2>Games</h2>' + games + '</section><section class="section"><h2>Latest development updates</h2>' + posts + '</section>')
-save('games.html', 'Games', '<section class="section"><h1>Games</h1>' + games + '</section>')
-save('blog.html', 'Development blog', '<section class="section"><h1>Development blog</h1>' + posts + '</section>')
-save('about.html', 'About', '<article class="article"><h1>About Potion Cannon Studios</h1><p>Replace this text with your studio story.</p></article>')
-save('contact.html', 'Contact', '<article class="article"><h1>Contact</h1><p>Add your public business email or social links here.</p></article>')
+games=listing('games')
+posts=listing('posts')
+save('index.html','Home','<section class="hero"><img src="assets/logo.png" alt="Potion Cannon Studios"><h1>Independent games. Creative experiments.</h1><p>Explore our games and follow our development journey.</p></section><section class="section"><h2>Games</h2>'+games+'</section><section class="section"><h2>Latest development updates</h2>'+posts+'</section>')
+save('games.html','Games','<section class="section"><h1>Games</h1>'+games+'</section>')
+save('blog.html','Development blog','<section class="section"><h1>Development blog</h1>'+posts+'</section>')
+save('about.html','About','<article class="article"><h1>About Potion Cannon Studios</h1><p>Replace this text with your studio story.</p></article>')
+save('contact.html','Contact','<article class="article"><h1>Contact</h1><p>Add your public business email or social links here.</p></article>')
 print('Site built')
