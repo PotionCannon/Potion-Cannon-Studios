@@ -54,7 +54,7 @@ function networkMessage(e){
 }
 async function api(path,options={}){
  if(!token)throw Error('Enter a token and select Check access first');
- const url='https://api.github.com/repos/'+owner+'/'+repo+'/'+path;
+ const url='https://api.github.com/repos/'+owner+'/'+repo+(path?'/'+path.replace(/^\/+/, ''):'');
  let res;
  try{
   res=await fetch(url,{...options,mode:'cors',cache:'no-store',headers:{
@@ -159,7 +159,7 @@ $('connect').onclick=()=>run(async()=>{
 async function probe(label,url,opts){
  const start=performance.now();
  try {
-  const res=await fetch(url,{mode:'cors',cache:'no-store',...opts});
+  const res=await fetch(url,{mode:'cors',cache:'no-store',redirect:'error',...opts});
   return label+': HTTP '+res.status+' ('+Math.round(performance.now()-start)+' ms)'+
    (res.ok?' — response received':' — GitHub returned an error');
  } catch(e){
