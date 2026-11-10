@@ -35,6 +35,15 @@ button:disabled{opacity:.5}.muted{color:var(--muted)}#status{white-space:pre-wra
 <label for="files">Select files</label><input id="files" type="file" multiple>
 <label for="folderfiles">Or select a folder</label><input id="folderfiles" type="file" webkitdirectory multiple>
 <button type="button" id="upload">Upload selected demo files</button></section>
+<section><h2>Upload images</h2>
+<p class="muted">Upload images to <code>assets/images/</code> for posts and game pages. PNG, JPEG, GIF, and WebP supported (up to 8 MB each). Images become public on your website.</p>
+<label for="image-folder">Optional image subfolder</label><input id="image-folder" placeholder="game-art">
+<label for="image-files">Choose images from your device</label><input id="image-files" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple>
+<label><input id="auto-insert" type="checkbox" checked> Automatically insert uploaded images into the post body</label>
+<button type="button" id="image-upload">Upload images to GitHub</button>
+<label for="image-links">Uploaded image Markdown / URLs</label><textarea id="image-links" rows="4" readonly placeholder="Uploaded image links will appear here"></textarea>
+<button type="button" id="copy-images">Copy image links</button><button type="button" id="insert-images">Insert into post/game body</button>
+</section>
 <section><h2>Connection diagnostics</h2><p class="muted">Tests public API access and authenticated access separately. No repository changes are made. Never share your token.</p><pre id="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere">Not run yet.</pre></section><section><h2>Activity</h2><p id="status" role="status">Ready.</p></section>
 </main><script>
 (()=>{
@@ -42,6 +51,17 @@ button:disabled{opacity:.5}.muted{color:var(--muted)}#status{white-space:pre-wra
 const owner='PotionCannon',repo='Potion-Cannon-Studios',branch='main';
 const $=id=>document.getElementById(id);
 let token='',selectedSha='',extraMeta={};
+let bodyCursor=0,bodySelectionEnd=0;
+function rememberBodyCursor(){const b=$('body');bodyCursor=b.selectionStart;bodySelectionEnd=b.selectionEnd;}
+function insertMarkdown(markdown){
+ const b=$('body'),start=Math.min(bodyCursor,b.value.length),end=Math.min(bodySelectionEnd,b.value.length);
+ const before=b.value.slice(0,start),after=b.value.slice(end);
+ const prefix=before && !before.endsWith('\n\n')?(before.endsWith('\n')?'\n':'\n\n'):'';
+ const suffix=after && !after.startsWith('\n\n')?(after.startsWith('\n')?'\n':'\n\n'):'';
+ const insertion=prefix+markdown+suffix;
+ b.setRangeText(insertion,start,end,'end');rememberBodyCursor();b.focus();
+}
+
 const say=s=>$('status').textContent=s;
 const enc=s=>new TextEncoder().encode(s);
 const b64=bytes=>{let out='';for(let i=0;i<bytes.length;i+=8192)out+=String.fromCharCode(...bytes.slice(i,i+8192));return btoa(out)};
@@ -87,7 +107,7 @@ const quote=v=>JSON.stringify(String(v??''));
 function clear(){
  selectedSha='';extraMeta={};
  for(const id of ['slug','title','summary','body','demo','game-status'])$(id).value='';
- $('published').checked=false;$('date').value=new Date().toISOString().slice(0,10);
+ $('published').checked=false;$('date').value=new Date().toISOString().slice(0,10);bodyCursor=0;bodySelectionEnd=0;
 }
 function setKind(){
  const game=$('kind').value==='games';
@@ -141,6 +161,33 @@ async function upload(){
   await put(path,bytes,current?.sha);done++;say('Uploaded '+done+' of '+files.length+': '+path);
  }
  say('Uploaded '+done+' file(s). Add the entry HTML path to the game page Demo field to enable Play Demo.');
+}
+async function uploadImages(){
+ const files=[...$('image-files').files];
+ if(!files.length)throw Error('Choose at least one image first');
+ const folder=$('image-folder').value.trim();
+ const prefix=folder?cleanPath(folder)+'/':'';
+ const allowed={'image/png':'.png','image/jpeg':'.jpg','image/gif':'.gif','image/webp':'.webp'};
+ const links=[];
+ for(const file of files){
+  const ext=allowed[file.type];
+  if(!ext)throw Error('Unsupported image format: '+file.name);
+  if(file.size>8*1024*1024)throw Error(file.name+' is larger than 8 MB');
+  const stem=file.name.replace(/\.[^.]+$/,'').toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'')||'image';
+  const path='assets/images/'+prefix+stem+ext;
+  const current=await get(path);
+  if(current&&!confirm('Replace existing image '+path+'?'))continue;
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  await put(path,bytes,current?.sha);
+  const encodedPath=path.split('/').map(encodeURIComponent).join('/');
+  const url='https://'+owner.toLowerCase()+'.github.io/'+repo+'/'+encodedPath;
+  links.push('!['+stem+']('+url+')');
+  $('image-links').value=links.join('\n');
+  say('Uploaded '+links.length+' image(s). Latest: '+path);
+ }
+ if(!links.length)say('No images uploaded.');
+ else if($('auto-insert').checked){insertMarkdown(links.join('\n\n'));say('Uploaded '+links.length+' image(s) and inserted them into the post body. Save the post to publish.');}
+ else say('Uploaded '+links.length+' image(s). Tap Insert into post/game body to place them in the editor.');
 }
 async function run(fn){
  try{say('Working…');await fn()}catch(e){say('Error: '+networkMessage(e))}
@@ -196,6 +243,14 @@ $('refresh').onclick=()=>run(refresh);
 $('existing').onchange=()=>run(load);
 $('save').onclick=()=>run(save);
 $('upload').onclick=()=>run(upload);
+$('body').addEventListener('click',rememberBodyCursor);
+$('body').addEventListener('keyup',rememberBodyCursor);
+$('body').addEventListener('select',rememberBodyCursor);
+$('body').addEventListener('input',rememberBodyCursor);
+$('image-upload').onclick=()=>run(uploadImages);
+$('copy-images').onclick=()=>{const value=$('image-links').value;if(!value){say('Upload an image first');return}navigator.clipboard.writeText(value).then(()=>say('Image links copied.')).catch(()=>say('Clipboard blocked. Select and copy the links manually.'))};
+$('insert-images').onclick=()=>{const value=$('image-links').value;if(!value){say('Upload an image first');return}insertMarkdown(value);say('Inserted image Markdown at your last cursor position. Save the post/game page to publish it.')};
+
 $('date').value=new Date().toISOString().slice(0,10);
 window.addEventListener('pagehide',()=>{token=''});
 })();
