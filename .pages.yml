@@ -1,0 +1,61 @@
+media:
+  input: assets/uploads
+  output: /assets/uploads
+content:
+  - name: posts
+    label: Development blog
+    type: collection
+    path: content/posts
+    view:
+      fields: [title, date, published]
+      primary: title
+      sort: [date, title]
+      default:
+        sort: date
+        order: desc
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: date
+        label: Date
+        type: date
+        required: true
+      - name: published
+        label: Published
+        type: boolean
+        default: false
+      - name: summary
+        label: Summary
+        type: text
+      - name: image
+        label: Featured image
+        type: image
+      - name: body
+        label: Post
+        type: rich-text
+  - name: games
+    label: Games
+    type: collection
+    path: content/games
+    fields:
+      - name: title
+        label: Game name
+        type: string
+        required: true
+      - name: status
+        label: Development status
+        type: string
+      - name: summary
+        label: Short description
+        type: text
+      - name: image
+        label: Cover image
+        type: image
+      - name: link
+        label: Play or store URL
+        type: string
+      - name: body
+        label: Details
+        type: rich-text
