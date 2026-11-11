@@ -160,6 +160,13 @@ def listing(kind):
 games=listing('games')
 posts=listing('posts')
 save('index.html','Home','<section class="hero"><img src="assets/logo.png" alt="Potion Cannon Studios"><h1>Independent games. Creative experiments.</h1><p>Explore our games and follow our development journey.</p></section><section class="section"><h2>Games</h2>'+games+'</section><section class="section"><h2>Latest development updates</h2>'+posts+'</section>')
+
+
+home = out / 'index.html'
+home.write_text(home.read_text(encoding='utf-8').replace('</body>', '<script src="assets/hidden/winter-launcher.js" defer></script></body>'), encoding='utf-8')
+
+
+
 save('games.html','Games','<section class="section"><h1>Games</h1>'+games+'</section>')
 save('blog.html','Development blog','<section class="section"><h1>Development blog</h1>'+posts+'</section>')
 save('about.html','About','<article class="article"><h1>About Potion Cannon Studios</h1><p>Replace this text with your studio story.</p></article>')
