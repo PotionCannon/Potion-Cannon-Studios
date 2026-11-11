@@ -1,0 +1,252 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#101c23"><title>WINTERWOOD — ASCII Forest</title><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101c23;color:#e5f2ed;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;touch-action:none}canvas{display:block;width:100%;height:100%}.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#101c23d9;backdrop-filter:blur(4px);z-index:3;padding:20px}.panel{width:min(420px,94vw);padding:28px 22px;text-align:center;border:1px solid #577079;background:#15242bdc;box-shadow:0 16px 60px #0007;border-radius:14px}.panel h1{font-size:clamp(24px,6vw,39px);letter-spacing:.21em;margin:4px 0 6px;color:#d8e9e9}.panel p{font-size:12px;line-height:1.8;color:#a5b9b9}.panel .eyebrow{color:#9bb5bc;letter-spacing:.3em;font-size:10px}.panel button{width:100%;padding:15px;margin-top:10px;border:1px solid #63818a;background:#263d44;color:#e7f2ee;font:700 13px ui-monospace,monospace;letter-spacing:.12em;border-radius:8px;cursor:pointer}.panel button:hover{background:#36545a}.panel button.secondary{background:transparent}.hidden{display:none!important}#hud{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;display:flex;justify-content:space-between;align-items:start;pointer-events:none;z-index:2;font-size:12px;text-shadow:0 2px 4px #000}#hud .right{text-align:right}#hud .small{font-size:10px;color:#adc2c3;letter-spacing:.13em}#hud strong{font-size:20px}#hud button{pointer-events:auto;background:#20363ed9;border:1px solid #58747b;color:#e4f0eb;border-radius:8px;padding:9px 12px;font:13px monospace;cursor:pointer}#controls{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:0;right:0;display:flex;justify-content:space-between;padding:0 max(18px,5vw);pointer-events:none;z-index:2}#controls button{pointer-events:auto;touch-action:manipulation;width:clamp(90px,25vw,160px);height:clamp(65px,12vh,95px);border:1px solid #74929a;background:#263d46b8;border-radius:12px;color:#d7e8e8;font:700 clamp(21px,5vw,32px) monospace;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}#controls button:active{background:#567780}#bar{width:120px;height:6px;border:1px solid #789399;background:#26383c;margin:5px 0 0 auto;border-radius:8px;overflow:hidden}#fill{height:100%;width:100%;background:#c5e0dc}#toast{position:absolute;left:50%;top:24%;transform:translateX(-50%);font-size:14px;letter-spacing:.2em;color:#e7f5f0;text-shadow:0 2px 6px #000;pointer-events:none;opacity:0;transition:opacity .2s}@media(orientation:landscape){#controls{bottom:max(16px,env(safe-area-inset-bottom));padding:0 5vw}#controls button{height:65px;width:100px}.panel{padding:16px 22px}.panel h1{font-size:27px}.panel p{margin:6px 0}.panel button{padding:10px;margin-top:7px}}</style></head><body><canvas id="scene"></canvas><div id="hud" class="hidden"><div><div class="small" id="modeLabel">PEACEFUL</div><strong id="score">000</strong><div class="small">WOOD CHOPPED</div><button id="menuBtn" aria-label="Pause game">Ⅱ PAUSE</button></div><div class="right"><div class="small" id="best">BEST 000</div><div id="timerWrap" class="hidden"><strong id="timer">20.0</strong><div id="bar"><div id="fill"></div></div></div><button id="soundBtn" aria-label="Toggle sound">♫ ON</button></div></div><div id="controls" class="hidden"><button id="left" aria-label="Chop left">◀</button><button id="right" aria-label="Chop right">▶</button></div><div id="toast"></div><div id="overlay" class="overlay"><div class="panel"><div class="eyebrow">* . * . * . *</div><h1 id="title">WINTERWOOD</h1><p id="description">A quiet winter forest. Read the branches, choose the safe side, and keep the firewood coming.</p><button id="peace">❄ PEACEFUL — NO TIMER</button><button id="arcade">⌛ ARCADE — RACE THE CLOCK</button><button id="resume" class="secondary hidden">RESUME</button><button id="inside" class="hidden">⌂ GO INSIDE</button><button id="nextNight" class="hidden">☾ ANOTHER NIGHT</button><p id="hint">A / D · ← / → · or tap the chop buttons<br>Original gentle chiptune melody, winter wind and chopping sounds.</p></div></div><script>
+(()=>{'use strict';const c=document.getElementById('scene'),ctx=c.getContext('2d');const $=id=>document.getElementById(id);let W=0,H=0,dpr=1,unit=14,cols=0,rows=0,last=0,now=0,mode='peace',state='menu',score=0,best=0,remaining=20,sound=true,audio=null,wind=null,musicNext=0,musicStep=0,musicBus=null,wood=[],lastBranch=0,side='left',shake=0,flash=0,particles=[],snow=[],animals=[],birds=[],treeLines=[],sceneTime=0,nightChops=0,nightNumber=1,totalWood=0,cabinView=0,cabinElapsed=0,cabinFlame=0,nightElapsed=0,worldStage=0;const NIGHT_SECONDS=20;let lastMusicStage=-1;const embers=[];
+// Cumulative wood milestones, independent of the number of nights elapsed.
+const FIRE_THRESHOLDS=[0,80,160,240,320,400,480,560];
+const FIRE_TITLES=['A QUIET HEARTH','THE FIRE GROWS','A ROARING FIRE','THE CABIN IGNITES','WATCHING HOME BURN','THE FLAMES SPREAD','A FOREST OF FIRE','THE BURNING TREE'];
+function fireStage(){return worldStage;}
+function earnedStage(){let n=0;for(let i=1;i<FIRE_THRESHOLDS.length;i++)if(totalWood>=FIRE_THRESHOLDS[i])n=i;return n;}
+function flame(x,y,s,t,intensity=1){
+ const flick=Math.sin(t*11+x*.03)*.18+Math.sin(t*17+y*.02)*.12;
+ const a=Math.max(.5,intensity);
+ text('^',x,y-s*2.3-s*flick,'#ffe39a',s*1.15*a,.85,'center');
+ text('/\\',x,y-s*1.45,'#ffb14e',s*1.25*a,.9,'center');
+ text('\\/',x,y-s*.55,'#f76a35',s*1.2*a,.9,'center');
+ text('~',x+s*.55,y-s*2.9,'#6d7776',s*.9,.45,'center');
+}
+function houseArt(x,y,u,t,stage){
+ const burning=stage>=3;
+ glyphArt(['       /\\','      /##\\','     /####\\','    /######\\','   /________\\','   |  []  |','   |  __  |','   |__||__|'],x,y-u*7,u*.85,burning?'#d3a07c':'#81918c',1,'center',.92);
+ if(burning){for(let k=-1;k<=1;k++)flame(x+k*u*2.2,y-u*5.8,u*(.7+stage*.09),t+k,1);}
+}
+const rand=(a,b)=>a+Math.random()*(b-a);const pick=a=>a[Math.floor(Math.random()*a.length)];function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);unit=Math.max(10,Math.min(17,W/38,H/34));cols=W/unit;rows=H/unit;while(snow.length<Math.min(240,Math.floor(W*H/2600)))snow.push({x:rand(0,W),y:rand(0,H),s:rand(7,27),a:rand(.2,.8),glyph:Math.random()<.23?'*':'.',phase:rand(0,6)});snow=snow.slice(0,Math.min(240,Math.floor(W*H/2600)));animals=[{x:W*.14,y:H*.79,v:9,kind:'rabbit',wait:0},{x:W*.82,y:H*.84,v:-6,kind:'fox',wait:0}];birds=[{x:W*.3,y:H*.2,v:15},{x:W*.85,y:H*.28,v:-12}]}addEventListener('resize',resize);resize();function text(t,x,y,color='#b7d0d1',size=unit,alpha=1,align='left'){ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.font=`${size}px monospace`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillText(t,x,y);ctx.globalAlpha=1}function pine(x,y,s,shade){ctx.save();ctx.translate(x,y);text('^',0,-s*3.2,shade,s,1,'center');for(let i=0;i<4;i++){const width=(i+2)*s*.55;text('/'+('*'.repeat(i+2))+'\\',0,-s*(2.65-i*.7),shade,s*.86,1,'center')}text('||',0,s*.5,shade,s*.85,1,'center');ctx.restore()}function nextBranch(){// Branches are spaced apart, and never spawn in a way that blocks both sides.
+ if(lastBranch>0){lastBranch--;return 0}
+ if(Math.random()<.64){lastBranch=1+Math.floor(Math.random()*2);return pick([-1,1])}
+ return 0}
+function initWood(){wood=[];lastBranch=0;for(let i=0;i<36;i++)wood.push(i<4?0:nextBranch())}function setMode(m){mode=m;state='playing';nightChops=0;nightElapsed=0;nightNumber=1;totalWood=0;worldStage=0;score=0;remaining=20;side='left';shake=0;flash=0;particles=[];initWood();best=+(localStorage.getItem('winterwood_'+mode)||0);$('inside').classList.add('hidden');$('nextNight').classList.add('hidden');$('peace').classList.remove('hidden');$('arcade').classList.remove('hidden');$('overlay').classList.add('hidden');$('hud').classList.remove('hidden');$('controls').classList.remove('hidden');$('timerWrap').classList.toggle('hidden',mode!=='arcade');$('modeLabel').textContent=mode.toUpperCase();updateHud();startAudio()}function updateHud(){$('score').textContent=String(score).padStart(3,'0');$('best').textContent='BEST '+String(best).padStart(3,'0');$('timer').textContent=remaining.toFixed(1);$('fill').style.width=(Math.max(0,remaining)/20*100)+'%'}function end(reason){state='over';$('inside').classList.add('hidden');$('nextNight').classList.add('hidden');stopWind();$('title').textContent=reason==='branch'?'FALLEN BRANCH':'TIME HAS PASSED';$('description').innerHTML=`You gathered <b>${score}</b> logs.<br>Best harvest: ${best} logs.<br>The forest is still waiting.`;$('peace').textContent='❄ PLAY PEACEFUL';$('arcade').textContent='⌛ PLAY ARCADE';$('resume').classList.add('hidden');$('overlay').classList.remove('hidden');$('controls').classList.add('hidden')}function pause(){if(state!=='playing')return;$('inside').classList.add('hidden');$('nextNight').classList.add('hidden');state='paused';stopWind();$('title').textContent='FOREST REST';$('description').textContent='The snow keeps falling. Return whenever you are ready.';$('resume').classList.remove('hidden');$('overlay').classList.remove('hidden');$('controls').classList.add('hidden')}function resume(){state='playing';$('overlay').classList.add('hidden');$('controls').classList.remove('hidden');startAudio()}function chop(dir){if(state!=='playing')return;startAudio();side=dir===-1?'left':'right';if(wood[0]===dir){hit();end('branch');return}score++;nightChops++;totalWood++;if(score>best){best=score;try{localStorage.setItem('winterwood_'+mode,best)}catch(e){}}if(mode==='arcade')remaining=Math.min(20,remaining+1.12);wood.shift();wood.push(nextBranch());shake=5;flash=1;// Spawn chips at the actual axe-to-trunk contact point using the same geometry as draw().
+const portrait=H>W,scale=Math.max(9,Math.min(17,W/(portrait?42:85),H/(portrait?60:35)));
+const ground=H*.80,base=ground-scale*2,impactX=W*.5+(dir===-1?-1:1)*scale*1.45,impactY=base+scale*.05;
+for(let i=0;i<38;i++){
+ const outward=dir===-1?-1:1,spread=rand(-1,1);
+ particles.push({x:impactX+rand(-scale*.3,scale*.3),y:impactY+rand(-scale*.45,scale*.4),
+ vx:outward*rand(24,135)+spread*rand(0,75),vy:rand(-190,-35),gravity:rand(290,490),
+ life:rand(2.0,4.3),maxLife:4.3,groundY:ground+rand(-scale*.15,scale*.7),rest:false,
+ char:pick(['.','*','+','`',':','·']),size:rand(.45,1.0),color:pick(['#eac996','#c89a62','#f1dfb8','#b78350'])});
+}playChop();updateHud()}function finishNight(){worldStage=Math.min(7,worldStage+Math.min(1,Math.max(0,earnedStage()-worldStage)));state='nightEnd';stopWind();$('title').textContent='TIME TO REST';$('description').innerHTML=`Twenty seconds have passed. The moon has set.<br>You gathered <b>${nightChops}</b> logs tonight (${totalWood} total).<br>${FIRE_TITLES[fireStage()]}.`;$('resume').classList.add('hidden');$('peace').classList.add('hidden');$('arcade').classList.add('hidden');$('inside').classList.remove('hidden');$('nextNight').classList.add('hidden');$('overlay').classList.remove('hidden');$('controls').classList.add('hidden')}
+function goInside(){state='cabin';cabinView=(nightNumber-1)%3;cabinElapsed=0;stopWind();$('overlay').classList.add('hidden');$('hud').classList.add('hidden');$('controls').classList.add('hidden');$('inside').classList.add('hidden');$('nextNight').classList.remove('hidden');$('peace').classList.add('hidden');$('arcade').classList.add('hidden');$('resume').classList.add('hidden');$('nextNight').textContent='☾ START NIGHT '+(nightNumber+1);$('title').textContent='HOME, AT LAST';$('description').textContent=FIRE_TITLES[fireStage()]+' · Total wood: '+totalWood;setTimeout(()=>{if(state==='cabin')$('overlay').classList.remove('hidden')},5500)}
+function startNextNight(){nightNumber++;nightChops=0;nightElapsed=0;remaining=20;initWood();particles=[];state='playing';$('overlay').classList.add('hidden');$('hud').classList.remove('hidden');$('controls').classList.remove('hidden');$('peace').classList.remove('hidden');$('arcade').classList.remove('hidden');$('nextNight').classList.add('hidden');updateHud();startAudio()}
+function hit(){playTone(115,.25,'sawtooth',.13)}function initAudio(){if(audio)return;try{audio=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}function playTone(freq,duration,type='sine',vol=.04){if(!sound)return;initAudio();if(!audio)return;audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.setValueAtTime(freq,audio.currentTime);g.gain.setValueAtTime(vol,audio.currentTime);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+duration);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}function chipNote(freq,at,dur,volume=.018,wave='triangle'){
+ if(!audio||!sound)return;
+ const osc=audio.createOscillator(),env=audio.createGain();
+ osc.type=wave;osc.frequency.setValueAtTime(freq,at);
+ env.gain.setValueAtTime(.0001,at);
+ env.gain.linearRampToValueAtTime(volume,at+.014);
+ env.gain.exponentialRampToValueAtTime(Math.max(.0002,volume*.52),at+Math.min(dur*.45,.24));
+ env.gain.exponentialRampToValueAtTime(.0001,at+dur);
+ osc.connect(env).connect(musicBus||audio.destination);
+ osc.start(at);osc.stop(at+dur+.015);
+}
+function playChop(){
+ if(!sound)return;initAudio();if(!audio)return;audio.resume();
+ const t=audio.currentTime;
+ // Sharp 8-bit axe strike followed by a soft, woody low-frequency thunk.
+ chipNote(660,t,.035,.045,'square');chipNote(190,t+.015,.105,.085,'triangle');
+ chipNote(92,t+.042,.085,.035,'square');
+}
+const melody=[
+  659,0,587,0,523,0,392,0, 440,0,523,0,587,0,0,0,
+  659,0,784,0,659,0,587,0, 523,0,440,0,392,0,0,0,
+  523,0,587,0,659,0,784,0, 880,0,784,0,659,0,0,0,
+  587,0,523,0,440,0,392,0, 440,0,523,0,392,0,0,0
+];
+const bass=[131,110,175,131, 131,147,110,98];
+function musicTick(){
+ if(!audio||!sound||state!=='playing'||!musicBus)return;
+ const inferno=fireStage()>=6;
+ if(lastMusicStage!==(inferno?1:0)){lastMusicStage=inferno?1:0;musicNext=0;musicStep=0;}
+ const stepDuration=inferno?.135:.375;
+ if(!musicNext||musicNext<audio.currentTime-.5){musicNext=audio.currentTime+.06;musicStep=0}
+ while(musicNext<audio.currentTime+.22){
+  const n=musicStep%melody.length,bar=Math.floor(n/8);
+  if(inferno){
+    // Original urgent 8-bit ostinato, minor harmonies, distorted bass and pounding pulse.
+    const roots=[110,103.83,87.31,98],root=roots[Math.floor(musicStep/16)%4];
+    const seq=[1,1.5,2,1.5,1,2,2.25,1.5,1,1.5,2,3,2.25,2,1.5,1];
+    chipNote(root*seq[musicStep%16]*4,musicNext,.105,.020,'sawtooth');
+    if(n%2===0)chipNote(root,musicNext,.21,.055,'square');
+    if(n%4===0){chipNote(55,musicNext,.14,.10,'triangle');chipNote(root*2,musicNext,.46,.024,'sawtooth')}
+    if(n%4===2)chipNote(185,musicNext,.075,.042,'square');
+    if(n%8===7)chipNote(1400,musicNext,.055,.011,'square');
+  }else{
+    if(melody[n])chipNote(melody[n],musicNext,.29,.018,'triangle');
+    if(n%8===0){chipNote(bass[bar%bass.length],musicNext,1.7,.013,'sine');chipNote(bass[bar%bass.length]*2,musicNext,.75,.006,'triangle')}
+    if(n%16===12)chipNote(1175,musicNext,.45,.005,'sine');
+  }
+  musicStep++;musicNext+=stepDuration;
+ }
+}
+function startAudio(){if(!sound)return;initAudio();if(!audio)return;audio.resume();if(!musicBus){musicBus=audio.createGain();musicBus.gain.value=.7;musicBus.connect(audio.destination)}if(wind)return;const buffer=audio.createBuffer(1,audio.sampleRate*2,audio.sampleRate),data=buffer.getChannelData(0);let prev=0;for(let i=0;i<data.length;i++){prev=(prev+(Math.random()*2-1)*.055)*.992;data[i]=prev}const src=audio.createBufferSource(),gain=audio.createGain(),filter=audio.createBiquadFilter();src.buffer=buffer;src.loop=true;filter.type='lowpass';filter.frequency.value=380;gain.gain.value=.11;src.connect(filter).connect(gain).connect(audio.destination);src.start();wind={src,gain}}function stopWind(){musicNext=0;lastMusicStage=-1;if(musicBus&&audio){musicBus.gain.cancelScheduledValues(audio.currentTime);musicBus.gain.setValueAtTime(musicBus.gain.value,audio.currentTime);musicBus.gain.setTargetAtTime(.0001,audio.currentTime,.025);setTimeout(()=>{if(musicBus){try{musicBus.disconnect()}catch(e){}musicBus=null}},400)}if(wind){try{wind.src.stop()}catch(e){}wind=null}}function glyphArt(lines,x,y,size,color,alpha=1,align='center',lineHeight=1){for(let i=0;i<lines.length;i++)text(lines[i],x,y+i*size*lineHeight,color,size,alpha,align)}
+function draw(dt){
+ sceneTime+=dt;if(state==='playing'){nightElapsed=Math.min(NIGHT_SECONDS,nightElapsed+dt);if(nightElapsed>=NIGHT_SECONDS)finishNight()}if(state==='cabin'){drawCabin(dt);return;}const t=sceneTime,ground=H*.80,portrait=H>W,scale=Math.max(9,Math.min(17,W/(portrait?42:85),H/(portrait?60:35))),tx=W*.5,base=ground-scale*2;
+ const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#091923');sky.addColorStop(.62,'#1b3440');sky.addColorStop(1,'#344c50');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ const stage=fireStage();
+ // Moon crosses the sky over twenty seconds of active gameplay.
+ const progress=Math.min(1,nightElapsed/NIGHT_SECONDS),moonX=W*(.12+.76*progress),moonY=H*(.48-.34*Math.sin(Math.PI*progress));
+ ctx.save();ctx.globalAlpha=.15;ctx.fillStyle='#b5e0dd';ctx.beginPath();ctx.arc(moonX,moonY,scale*4.2,0,7);ctx.fill();ctx.globalAlpha=.8;ctx.beginPath();ctx.arc(moonX,moonY,scale*1.6,0,7);ctx.fill();ctx.restore();
+ for(let layer=0;layer<3;layer++){
+  const shade=['#263c45','#35515a','#527079'][layer],step=scale*(layer===0?17:layer===1?13:11),y=ground-scale*(layer===0?8:layer===1?5:2);
+  for(let i=-2;i<W/step+3;i++){
+   const x=i*step+Math.sin(i*17+layer*3)*step*.23;
+   const size=scale*(layer===0?.80:layer===1?1.02:1.12);
+   glyphArt(['      /\\','     /**\\','    /****\\','   /******\\','  /********\\',' /**********\\','      ||'],x,y-size*5,size,shade,.70,'center',.84);
+  }
+ }
+ ctx.fillStyle='#344f57';ctx.beginPath();ctx.moveTo(0,ground);for(let x=0;x<=W+12;x+=12)ctx.lineTo(x,ground+Math.sin(x*.016)*scale*.65);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ ctx.fillStyle='#91b2b1';ctx.globalAlpha=.18;ctx.fillRect(0,ground+scale*3,W,2);ctx.globalAlpha=1;
+ for(let i=0;i<30;i++){let x=(i*97.33+13)%W,y=ground+scale*2+(i*31)%(Math.max(1,H-ground-scale*2));text(i%4===0?'~':i%3===0?'_':'.',x,y,'#a2c0bb',scale*.8,.4)}
+ // wildlife passes behind foreground tree
+ for(const b of birds){b.x+=b.v*dt;if(b.x>W+40)b.x=-40;if(b.x< -40)b.x=W+40;glyphArt(['\ /',' V '],b.x,b.y+Math.sin(t*2+b.x*.01)*4,scale*.65,'#b1c9c6',.65)}
+ for(const a of animals){
+  if(stage>=6){
+    // Fleeing wildlife, visibly ablaze, moving across the foreground in panic.
+    if(!a.panic){a.panic=true;a.x=a.kind==='rabbit'?-scale*5:W+scale*5;a.v=a.kind==='rabbit'?rand(85,125):-rand(75,115);a.y=ground-scale*(a.kind==='rabbit'?1.2:1.55);}
+    a.x+=a.v*dt;
+    if(a.x>W+scale*6){a.x=-scale*6;a.v=rand(85,125)}
+    if(a.x< -scale*6){a.x=W+scale*6;a.v=-rand(75,115)}
+    const bob=Math.abs(Math.sin(t*15+(a.kind==='fox'?2:0)))*scale*.32;
+    const art=a.kind==='rabbit'?[' (\\_/)', ' (o.o)', ' / >o']:[' /\\_/\\','( o.o )',' > ^ <'];
+    glyphArt(art,a.x,a.y-bob,scale*.7,'#bd8b70',.95,'center',.9);
+    text('^*^',a.x,a.y-bob-scale*1.1,'#ffb44d',scale*.9,.95,'center');
+    text('^^',a.x+Math.sin(t*11)*scale*.18,a.y-bob-scale*1.7,'#e15a2d',scale*.65,.8,'center');
+  }else{
+    a.panic=false;a.wait-=dt;if(a.wait<0){a.wait=rand(3,9);a.v=pick([-1,0,1])*rand(4,11)}
+    a.x+=a.v*dt;if(a.x<0)a.x=W;if(a.x>W)a.x=0;
+    const art=a.kind==='rabbit'?[' (\\_/)' , ' (o.o)', ' / >o']:[' /\\_/\\','( o.o )',' > ^ <'];glyphArt(art,a.x,a.y,scale*.7,'#b7c8bc',.8,'center',.9)
+  }
+ }
+ // Fire encroaches on the forest only after enough cumulative wood has been gathered.
+ if(stage>=4){
+   houseArt(W*.13,ground-scale*.7,scale*.85,t,stage);
+   if(stage>=5){for(let j=0;j<Math.ceil(W/(scale*8));j++){
+     const fx=j*scale*8+scale*2;
+     if(Math.abs(fx-tx)<scale*3)continue;
+     flame(fx,ground-scale*(2+(j%3)),scale*(.9+stage*.11),t+j);
+   }}
+   if(stage>=6){ctx.fillStyle='rgba(196,60,23,.09)';ctx.fillRect(0,0,W,H);}
+ }
+ // Continuous tree trunk from snowy ground to upper sky: no missing top/bottom segments.
+ // The burning overlay is drawn in the same world coordinates as the trunk and branches.
+ if(state!=='menu'&&state!=='cabin'){
+ ctx.save();ctx.translate(shake?rand(-shake,shake):0,0);
+ const step=scale*2.05,top=H*.12,trunkBottom=ground+scale*.55;
+ const branchBase=base-step;
+ // Extend the trunk through the entire visible playfield, with a stable base.
+ for(let y=trunkBottom;y>=top;y-=scale*.72){
+   text('||||',tx,y,stage>=7?'#66554b':'#cbd7cb',scale*1.13,1,'center');
+   if(Math.floor(y/scale)%3===0)text(':',tx,y,stage>=7?'#b36b42':'#78948a',scale*.65,.75,'center');
+ }
+ const visible=Math.max(4,Math.min(18,Math.floor((branchBase-top)/step)+1));
+ for(let i=visible-1;i>=0;i--){
+   const y=branchBase-i*step,branch=wood[i]||0;
+   if(branch===0)continue;
+   const charred=stage>=7,branchColor=charred?'#66514a':'#c5d6cc';
+   const bx=branch===-1?tx-scale*4.9:tx+scale*.9;
+   glyphArt(branch===-1?['_______','<<<<<']:['_______','/////'],bx,y-scale*.8,scale*.9,branchColor,1,'left',.65);
+   if(charred){
+     // Each burning branch moves down with its wood[] segment after chopping.
+     flame(tx+branch*scale*3.8,y-scale*.7,scale*.47,t+i*.77,.68);
+     text('~',tx+branch*scale*4.1,y-scale*2.9,'#6b625e',scale*.7,.35,'center');
+   }
+ }
+ if(stage>=7){
+   // Fire hugs the trunk and is attached to its actual rendered coordinates.
+   for(let y=trunkBottom-scale*.5,j=0;y>top+scale;y-=scale*2.35,j++){
+     flame(tx+Math.sin(j*1.9)*scale*.48,y,scale*.43,t+j*.53,.68);
+   }
+ }
+ text('____/||||\____',tx,ground+scale*.55,stage>=7?'#987b69':'#e0e8dc',scale*.93,1,'center');
+ const px=tx+(side==='left'?-1:1)*scale*5.7,py=base+scale*1.2;
+ glyphArt(['  _  ',' (.) ',' /|\ ',' / \ '],px,py-scale*3.2,scale*1.05,'#e7e4d6',1,'center',.94);
+ text(side==='left'?'━━╱':'╲━━',px+(side==='left'?scale*2:-scale*2),py-scale*.95,'#d9ac75',scale*1.35,1,'center');
+ ctx.restore();
+ if(flash>0){text('*',tx+(side==='left'?-1:1)*scale*2,base,'#f4dca4',scale*2,flash,'center');flash=Math.max(0,flash-dt*5)}
+ shake=Math.max(0,shake-dt*28);
+ }
+ for(const p of particles){
+ p.life-=dt;
+ if(!p.rest){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.gravity*dt;p.vx*=Math.exp(-.7*dt);
+ if(p.y>=p.groundY){p.y=p.groundY;p.rest=true;p.vx=0;p.vy=0;}}
+ if(p.life>0)text(p.rest?pickStable(Math.floor(p.x)):p.char,p.x,p.y,p.color,scale*p.size,Math.min(1,p.life/.75));
+}particles=particles.filter(p=>p.life>0);
+ // The forest inferno replaces falling snow with rising, windblown ash.
+ if(stage>=6){
+   for(const s of snow){
+     s.y-=s.s*dt*(.65+stage*.14);
+     s.x+=dt*(9+Math.sin(t*.9+s.phase)*15);
+     if(s.y< -12){s.y=H+rand(0,70);s.x=rand(0,W)}
+     if(s.x>W+8)s.x=-8;
+     text(s.glyph==='*'?'·':'.',s.x,s.y,'#b7a59b',scale*.75,s.a*.9);
+   }
+   if(embers.length<Math.min(130,Math.floor(W*H/3700))){
+     for(let i=0;i<3;i++)embers.push({x:rand(0,W),y:rand(H*.55,H),vy:rand(20,70),vx:rand(-15,22),life:rand(1,3),max:3});
+   }
+   for(const e of embers){e.y-=e.vy*dt;e.x+=e.vx*dt+Math.sin(t*3+e.y*.01)*dt*12;e.life-=dt;
+     text(Math.random()<.12?'*':'.',e.x,e.y,'#ff8b43',scale*.7,Math.max(0,Math.min(.8,e.life/1.4)));
+   }
+   for(let i=embers.length-1;i>=0;i--)if(embers[i].life<=0||embers[i].y<0)embers.splice(i,1);
+ }else{
+   embers.length=0;
+   for(const s of snow){s.y+=s.s*dt;s.x+=Math.sin(t*.7+s.phase)*dt*5;if(s.y>H+8){s.y=-8;s.x=rand(0,W)}if(s.x>W)s.x=0;if(s.x<0)s.x=W;text(s.glyph,s.x,s.y,'#e4f1ef',scale*(s.glyph==='*'?.92:.72),s.a)}
+ }
+ if(state==='playing'&&mode==='arcade'){remaining-=dt;if(remaining<=0){remaining=0;end('time')}updateHud()}
+}
+function drawCabin(dt){
+ cabinElapsed+=dt;cabinFlame+=dt;const u=Math.max(9,Math.min(18,W/47,H/29)),cx=W/2,gy=H*.79;
+ const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#271c1a');bg.addColorStop(1,'#53392a');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+ for(let y=u*2;y<H*.75;y+=u*2.5)text('='.repeat(Math.ceil(W/(u*.61))),0,y,'#75523a',u,.28);
+ ctx.fillStyle='#32251f';ctx.fillRect(0,gy,W,H-gy);for(let y=gy;y<H;y+=u*1.5)text('_'.repeat(Math.ceil(W/(u*.6))),0,y,'#a0774d',u,.27);
+ // Everything in the cabin is shown from one consistent side-on viewpoint.
+ // The hearth is left of center, and the bed is always to its right.
+ const fireX=W*.31,fireY=H*.65,bedX=W*.73,bedY=H*.69;
+ const glow=ctx.createRadialGradient(fireX,fireY,0,fireX,fireY,u*15);
+ glow.addColorStop(0,'#ffb15a55');glow.addColorStop(1,'#ffb15a00');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+ glyphArt([String.raw`  __________  `,String.raw` /          \\ `,String.raw`|  [      ]  |`,String.raw`|  [      ]  |`,String.raw`|__|______|__|`],fireX,fireY-u*5,u*.78,'#c69b72',1,'center',1);
+ const stage=fireStage();const flick=Math.sin(cabinFlame*12)*.35+Math.sin(cabinFlame*7)*.3;
+ glyphArt([String.raw`   (  )   `,String.raw`  ( /\\ )  `,String.raw`   /##\\   `,String.raw`  /####\\  `,String.raw` ==\\__/== `],fireX,fireY-u*3.2+flick*u*.4,u*.8*(1+Math.min(stage,3)*.24),'#ffb969',1,'center',.9);
+ text('~  ~  ~',fireX,fireY+u*1.6,'#e2a06a',u,.8,'center');
+ const wx=W*.14,wy=H*.27;
+ glyphArt([String.raw`+---------+`,String.raw`| *  .  * |`,String.raw`| . /\\ . |`,String.raw`|  /##\\  |`,String.raw`+---------+`],wx,wy,u*.72,'#a4bfc0',.8,'center',1.1);
+ // Side profile bed: headboard on the right, next to the hearth.
+ glyphArt([String.raw`             |`,String.raw`    _________|`,String.raw` __/_________|`,String.raw`|____________|`,String.raw` |          |`],bedX,bedY-u*2.5,u*.79,'#d4b78f',1,'center',1.03);
+ if(cabinView===0){
+  // Sleeping under the blanket, facing left in profile.
+  glyphArt([String.raw`  z  z`,String.raw` (._)______`,String.raw` /~~~~~~~~\\`],bedX-u*2,bedY-u*3.5,u*.78,'#f1d8b2',1,'center',1);
+ }else if(cabinView===1){
+  // Side-on recliner, to the left of the bed and beside the fire.
+  glyphArt([String.raw`   o`,String.raw`  /|__`,String.raw`  /  /\\`,String.raw` |_____|`,String.raw`  |   |`],W*.52,H*.64-u*3.4,u*.83,'#e0c9a5',1,'center',1);
+ }else{
+  // Same side-on sitting position, now holding a steaming mug.
+  glyphArt([String.raw`  ~  ~`,String.raw`   o  [_]`,String.raw`  /|__/`,String.raw`  /  /\\`,String.raw` |_____|`,String.raw`  |   |`],W*.52,H*.64-u*4.4,u*.79,'#e0c9a5',1,'center',1);
+ }
+ const tail=Math.sin(cabinElapsed*2.4)>0.25?'~':'\\';
+ const catX=W*.47,catY=gy-u*2.8;
+ glyphArt([String.raw` /\\_/\\`,String.raw`( o.o )`,` / > <${tail}`],catX,catY,u*.78,'#e5d6bd',1,'center',.95);
+ if(stage>=3){
+   if(stage<=3){for(let j=0;j<5;j++)flame(W*(.17+j*.16),gy-u*(2+(j%2)),u*(1.1+j*.08),cabinFlame+j);}
+   else {
+     // Side-view exterior replaces the cabin interior as the blaze spreads.
+     const bg2=ctx.createLinearGradient(0,0,0,H);bg2.addColorStop(0,'#1b2028');bg2.addColorStop(1,'#4b2520');ctx.fillStyle=bg2;ctx.fillRect(0,0,W,H);
+     text(' .  *  .  *  . ',W*.5,H*.2,'#b4a7a0',u,1,'center');
+     houseArt(W*.49,H*.77,u*1.8,cabinFlame,stage);
+     if(stage>=5)for(let j=0;j<7;j++){const x=W*(.07+j*.14);pine(x,H*.73,u*.85,'#755d4b');flame(x,H*.76,u*(.75+stage*.12),cabinFlame+j);}
+     // Observer, always in profile, watches from a safe distance.
+     glyphArt(['  o',' /|\\',' / \\'],W*.83,H*.69,u*1.05,'#d2b99d',1,'center',1);
+     const tail=Math.sin(cabinElapsed*2.4)>.1?'~':'\\';
+     glyphArt([' /\\_/\\','( o.o )',' / > <'+tail],W*.73,H*.78,u*.72,'#e5d6bd',1,'center',1);
+   }
+ }
+ text('WINTERWOOD  /  NIGHT '+nightNumber,cx,H*.09,'#edcfa4',u*.88,1,'center');
+ text(stage<3?['SLEEPING SOUNDLY','RESTING BY THE FIRE','A WARM DRINK'][cabinView]:FIRE_TITLES[stage],cx,H*.15,'#f0bc86',u*.76,1,'center');
+ text('WOOD GATHERED: '+totalWood,cx,H*.92,'#cbbca3',u*.83,1,'center');
+}
+function pickStable(i){return ['.','_','~','·'][i%4]}function frame(t){musicTick();const dt=Math.min(.05,(t-last)/1000||0);last=t;draw(dt);requestAnimationFrame(frame)}requestAnimationFrame(frame);$('peace').onclick=()=>setMode('peace');$('arcade').onclick=()=>setMode('arcade');$('resume').onclick=resume;$('inside').onclick=goInside;$('nextNight').onclick=startNextNight;$('menuBtn').onclick=pause;$('soundBtn').onclick=()=>{sound=!sound;$('soundBtn').textContent=sound?'♫ ON':'♫ OFF';if(sound)startAudio();else stopWind()};$('left').addEventListener('pointerdown',e=>{e.preventDefault();chop(-1)});$('right').addEventListener('pointerdown',e=>{e.preventDefault();chop(1)});addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','KeyA','KeyD','Space','Escape'].includes(e.code))e.preventDefault();if(e.repeat)return;if(e.code==='Escape'||e.code==='Space'){if(state==='playing')pause();else if(state==='paused')resume()}if(e.code==='ArrowLeft'||e.code==='KeyA')chop(-1);if(e.code==='ArrowRight'||e.code==='KeyD')chop(1)});document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause()});})();
+</script></body></html>
