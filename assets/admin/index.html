@@ -11,6 +11,11 @@ input,textarea,select{display:block;width:100%;padding:12px;border-radius:9px;bo
 input[type=checkbox]{width:auto;display:inline}textarea{min-height:120px}
 button{background:linear-gradient(90deg,#29a8e8,#7e5fe5);color:white;border:0;border-radius:10px;padding:11px 16px;font-weight:700;margin:12px 8px 4px 0;cursor:pointer}
 button:disabled{opacity:.5}.muted{color:var(--muted)}#status{white-space:pre-wrap;overflow-wrap:anywhere}code{color:var(--blue)}.hide{display:none}
+
+/* Compact publishing workspace */
+main{padding-bottom:100px}section.admin-fold{padding:0;overflow:hidden}section.admin-fold>h2{margin:0;padding:17px 20px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:1.15rem}section.admin-fold>h2:after{content:'⌄';font-size:1.3rem;color:var(--blue)}section.admin-fold.collapsed>h2:after{content:'›'}section.admin-fold>.fold-content{padding:0 20px 20px}section.admin-fold.collapsed>.fold-content{display:none}
+#activity-panel{position:fixed;bottom:0;left:0;right:0;margin:0;border-radius:14px 14px 0 0;z-index:50;background:#17203b;border:1px solid #7184ac66;box-shadow:0 -4px 22px #0008;padding:10px 16px;max-height:50vh;overflow:auto}#activity-panel h2{font-size:.9rem;margin:0;cursor:pointer}#activity-panel h2:after{content:' ▴';color:var(--blue)}#activity-panel:not(.expanded) #status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:4px 0;font-size:.85rem}#activity-panel.expanded #status{white-space:pre-wrap;max-height:35vh;overflow:auto}
+.modal-backdrop{position:fixed;inset:0;z-index:1000;background:#000b;display:grid;place-items:center;padding:20px}.modal-backdrop[hidden]{display:none}.modal-panel{background:#18223e;border:1px solid #8296c055;border-radius:18px;padding:24px;max-width:440px;width:100%;box-shadow:0 15px 45px #000a}.modal-panel h2{margin-top:0}.modal-panel p{overflow-wrap:anywhere}.modal-panel button{margin-top:12px}
 </style></head><body><main>
 <h1>Potion Cannon Studios — Admin</h1>
 <p class="muted">Publishing workspace. This URL is public; publishing requires a GitHub token. Your token stays in this page's memory, not in storage.</p>
@@ -44,10 +49,51 @@ button:disabled{opacity:.5}.muted{color:var(--muted)}#status{white-space:pre-wra
 <label for="image-links">Uploaded image Markdown / URLs</label><textarea id="image-links" rows="4" readonly placeholder="Uploaded image links will appear here"></textarea>
 <button type="button" id="copy-images">Copy image links</button><button type="button" id="insert-images">Insert into post/game body</button>
 </section>
+<section><h2>Publish a Free Game</h2>
+<p class="muted">Publish a complete HTML game and its artwork to the public games gallery. The entry HTML must be inside the selected game folder.</p>
+<label for="store-slug">Game ID (lowercase letters, numbers, hyphens)</label><input id="store-slug" placeholder="my-game">
+<label for="store-title">Game title</label><input id="store-title" placeholder="My Game">
+<label for="store-desc">Short description</label><textarea id="store-desc" rows="3" placeholder="What is the game about?"></textarea>
+<label for="store-entry">Entry HTML filename (within uploaded folder)</label><input id="store-entry" value="index.html" placeholder="index.html">
+<label for="store-cover">Cover art (optional, PNG/JPG/WebP/GIF)</label><input id="store-cover" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+<label for="store-files">Upload the game's files (select a folder to preserve assets)</label><input id="store-files" type="file" webkitdirectory multiple>
+<label><input id="store-published" type="checkbox" checked> List this game publicly</label>
+<button type="button" id="store-publish">Upload and publish game</button>
+</section>
 <section><h2>Connection diagnostics</h2><p class="muted">Tests public API access and authenticated access separately. No repository changes are made. Never share your token.</p><pre id="diagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere">Not run yet.</pre></section><section><h2>Activity</h2><p id="status" role="status">Ready.</p></section>
-</main><script>
+</main>
+<div id="admin-modal" class="modal-backdrop" hidden><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title"><h2 id="modal-title">Potion Cannon Studios</h2><p id="modal-message"></p><div id="modal-buttons"><button type="button" id="modal-cancel">Cancel</button><button type="button" id="modal-ok">OK</button></div></div></div>
+<script>
 (()=>{
 'use strict';
+
+function dialog(message,confirmMode){return new Promise(resolve=>{
+ const overlay=$('admin-modal'),ok=$('modal-ok'),cancel=$('modal-cancel');
+ $('modal-message').textContent=message;cancel.hidden=!confirmMode;overlay.hidden=false;
+ const finish=value=>{overlay.hidden=true;ok.onclick=null;cancel.onclick=null;resolve(value)};
+ ok.onclick=()=>finish(true);cancel.onclick=()=>finish(false);ok.focus();
+})}
+function ask(message){return dialog(message,true)}
+function notice(message){return dialog(message,false)}
+function setupFolds(){
+ for(const section of document.querySelectorAll('main>section')){
+  const heading=section.querySelector(':scope>h2');if(!heading)continue;
+  section.classList.add('admin-fold');
+  const wrap=document.createElement('div');wrap.className='fold-content';
+  while(heading.nextSibling)wrap.append(heading.nextSibling);section.append(wrap);
+  heading.setAttribute('role','button');heading.tabIndex=0;
+  const toggle=()=>{section.classList.toggle('collapsed');heading.setAttribute('aria-expanded',String(!section.classList.contains('collapsed')))};
+  heading.onclick=toggle;heading.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle()}};
+  if(!/Connect to GitHub|Publish a Free Game/.test(heading.textContent))section.classList.add('collapsed');
+  heading.setAttribute('aria-expanded',String(!section.classList.contains('collapsed')));
+  if(heading.textContent==='Activity'){
+    section.id='activity-panel';section.classList.remove('collapsed');
+    heading.onclick=()=>section.classList.toggle('expanded');
+    heading.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();section.classList.toggle('expanded')}};
+  }
+ }
+}
+setupFolds();
 const owner='PotionCannon',repo='Potion-Cannon-Studios',branch='main';
 const $=id=>document.getElementById(id);
 let token='',selectedSha='',extraMeta={};
@@ -140,27 +186,27 @@ async function save(){
  if(!safe(slug))throw Error('Filename must use lowercase letters, numbers and hyphens');
  if(!$('title').value.trim())throw Error('Title required');
  const path='content/'+kind+'/'+slug+'.md',current=await get(path);
- if(current&&selectedSha!==current.sha&&!confirm('This file already exists or changed. Overwrite?'))return;
+ if(current&&selectedSha!==current.sha&&!(await ask('This file already exists or changed. Overwrite?')))return;
  const meta={...extraMeta,title:$('title').value.trim(),summary:$('summary').value.trim()};
  if(kind==='posts'){meta.date=$('date').value;meta.published=$('published').checked?'true':'false';delete meta.status;delete meta.demo}
  else{meta.status=$('game-status').value.trim();if($('demo').value.trim())meta.demo=cleanPath($('demo').value.trim());else delete meta.demo;delete meta.date;delete meta.published}
  const raw='---\n'+Object.entries(meta).map(([k,v])=>k+': '+quote(v)).join('\n')+'\n---\n'+$('body').value.trim()+'\n';
- await put(path,enc(raw),current?.sha);say('Committed '+path+'. GitHub Actions should rebuild the site.');await refresh();
+ await put(path,enc(raw),current?.sha);say('Committed '+path+'. GitHub Actions should rebuild the site.');await refresh();await notice('Page published to GitHub. The site will update after deployment.');
 }
 async function upload(){
  const files=[...$('files').files,...$('folderfiles').files];
  if(!files.length)throw Error('Select files first');
- if(files.length>40&&!confirm('Upload '+files.length+' files individually?'))return;
+ if(files.length>40&&!(await ask('Upload '+files.length+' files individually?')))return;
  const base=$('demo-folder').value.trim(),prefix=base?cleanPath(base)+'/':'';
  let done=0;
  for(const file of files){
   const rel=cleanPath(file.webkitRelativePath||file.name),path='assets/demos/'+prefix+rel;
-  const current=await get(path);if(current&&!confirm('Overwrite '+path+'?'))continue;
+  const current=await get(path);if(current&&!(await ask('Overwrite '+path+'?')))continue;
   const bytes=new Uint8Array(await file.arrayBuffer());
   if(bytes.length>20*1024*1024)throw Error(file.name+' exceeds the 20 MB per-file limit');
   await put(path,bytes,current?.sha);done++;say('Uploaded '+done+' of '+files.length+': '+path);
  }
- say('Uploaded '+done+' file(s). Add the entry HTML path to the game page Demo field to enable Play Demo.');
+ say('Uploaded '+done+' demo file(s).');await notice('Uploaded '+done+' demo file(s) to GitHub.');
 }
 async function uploadImages(){
  const files=[...$('image-files').files];
@@ -176,7 +222,7 @@ async function uploadImages(){
   const stem=file.name.replace(/\.[^.]+$/,'').toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'')||'image';
   const path='assets/images/'+prefix+stem+ext;
   const current=await get(path);
-  if(current&&!confirm('Replace existing image '+path+'?'))continue;
+  if(current&&!(await ask('Replace existing image '+path+'?')))continue;
   const bytes=new Uint8Array(await file.arrayBuffer());
   await put(path,bytes,current?.sha);
   const encodedPath=path.split('/').map(encodeURIComponent).join('/');
@@ -188,10 +234,53 @@ async function uploadImages(){
  if(!links.length)say('No images uploaded.');
  else if($('auto-insert').checked){insertMarkdown(links.join('\n\n'));say('Uploaded '+links.length+' image(s) and inserted them into the post body. Save the post to publish.');}
  else say('Uploaded '+links.length+' image(s). Tap Insert into post/game body to place them in the editor.');
+ if(links.length)await notice('Uploaded '+links.length+' image(s) to GitHub.');
 }
 async function run(fn){
- try{say('Working…');await fn()}catch(e){say('Error: '+networkMessage(e))}
+ try{say('Working…');await fn()}catch(e){const msg='Error: '+networkMessage(e);say(msg);await notice(msg)}
 }
+async function publishStore(){
+ const slug=$('store-slug').value.trim().toLowerCase();
+ const title=$('store-title').value.trim();
+ const description=$('store-desc').value.trim();
+ const entry=cleanPath($('store-entry').value.trim());
+ const files=[...$('store-files').files];
+ const cover=$('store-cover').files[0];
+ if(!safe(slug)||!title)throw Error('Enter a valid game ID and title');
+ if(!entry.toLowerCase().endsWith('.html'))throw Error('Entry must be an HTML file');
+ if(!files.length)throw Error('Select a folder containing the complete game');
+ const mapped=files.map(f=>({file:f,relative:cleanPath(f.webkitRelativePath||f.name)}));
+ const root=mapped[0].relative.split('/')[0];
+ const normalized=mapped.map(({file,relative})=>({file,relative:relative.startsWith(root+'/')?relative.slice(root.length+1):relative}));
+ if(!normalized.some(x=>x.relative===entry))throw Error('Entry HTML file not found in selected folder');
+ if(!(await ask('Publish '+title+' and upload '+files.length+' game file(s) to GitHub?')))return;
+ let done=0;
+ for(const {file,relative} of normalized){
+   if(file.size>20*1024*1024)throw Error(file.name+' exceeds 20 MB');
+   const path='assets/play/'+slug+'/'+relative;
+   const old=await get(path);
+   await put(path,new Uint8Array(await file.arrayBuffer()),old?.sha);
+   done++;say('Uploading game files: '+done+'/'+normalized.length);
+ }
+ let coverPath='';
+ if(cover){
+   const ext=({'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp','image/gif':'.gif'})[cover.type];
+   if(!ext||cover.size>8*1024*1024)throw Error('Cover must be PNG, JPG, GIF or WebP, max 8 MB');
+   coverPath='assets/game-covers/'+slug+ext;
+   const old=await get(coverPath);
+   await put(coverPath,new Uint8Array(await cover.arrayBuffer()),old?.sha);
+ }
+ const path='content/library/'+slug+'.md';
+ const old=await get(path);
+ const metadata={title,summary:description,entry:'assets/play/'+slug+'/'+entry,published:$('store-published').checked?'true':'false'};
+ if(coverPath)metadata.cover=coverPath;
+ else if(old){const previous=parse(from64(old.content));if(previous.meta.cover)metadata.cover=previous.meta.cover}
+ const raw='---\n'+Object.entries(metadata).map(([k,v])=>k+': '+quote(v)).join('\n')+'\n---\n'+description+'\n';
+ await put(path,enc(raw),old?.sha);
+ say('Success: Published '+title+' ('+done+' files).');
+ await notice('Game published to GitHub! '+done+' files uploaded. The gallery will update after GitHub Actions finishes.');
+}
+$('store-publish').onclick=()=>run(publishStore);
 $('connect').onclick=()=>run(async()=>{
  token=$('token').value.trim();$('token').value='';
  $('connection').textContent='Checking access…';
