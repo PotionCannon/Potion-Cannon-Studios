@@ -163,12 +163,37 @@ def listing(kind):
                         html.escape(month)+'</span></h2><div class="timeline-cards">'+''.join(cards)+'</div></section>')
     return '<div class="timeline-scroll" tabindex="0" aria-label="'+('Game posts' if kind=='games' else 'Development posts')+'">'+''.join(sections)+'</div>'
 
+def game_library():
+    directory=r/'content'/'library'
+    cards=[]
+    if directory.is_dir():
+        for f in directory.glob('*.md'):
+            m,body=parse(f)
+            if m.get('published','true').lower()!='true':continue
+            title=m.get('title',f.stem)
+            desc=m.get('summary','')
+            cover=m.get('cover','')
+            entry=m.get('entry','')
+            if not entry.startswith('assets/play/') or '..' in entry.split('/') or not entry.lower().endswith('.html'):
+                continue
+            if not (r/entry).is_file():continue
+            cover_html=''
+            if cover.startswith('assets/game-covers/') and '..' not in cover.split('/'):
+                cover_html='<img loading="lazy" src="'+html.escape(cover,quote=True)+'" alt="'+html.escape(title,quote=True)+' cover">'
+            url=html.escape(entry,quote=True)
+            cards.append((title.lower(),'<article class="store-card"><a href="'+url+'" class="store-cover">'+(cover_html or '<span class="store-placeholder">🎮</span>')+'</a><div class="store-info"><h2>'+html.escape(title)+'</h2><p>'+formatted_text(desc)+'</p><a class="btn store-play" href="'+url+'">Play Free</a></div></article>'))
+    cards.sort(key=lambda c:c[0])
+    return '<section class="section"><h1>Free Games</h1><p class="muted">Discover and play our browser games, completely free.</p><div class="store-grid">'+(''.join(card for _,card in cards) if cards else '<p class="muted">Our game gallery is coming soon.</p>')+'</div></section>'
+
 games=listing('games')
 posts=listing('posts')
 save('index.html','Home','<section class="hero"><img src="assets/logo.png" alt="Potion Cannon Studios"><h1>Independent games. Creative experiments.</h1><p>Explore our games and follow our development journey.</p></section><section class="section"><h2>Games</h2>'+games+'</section><section class="section"><h2>Latest development updates</h2>'+posts+'</section>')
 home = out / 'index.html'
 home.write_text(home.read_text(encoding='utf-8').replace('</body>', '<script src="assets/hidden/winter-launcher.js" defer></script></body>'), encoding='utf-8')
-save('games.html','Games','<section class="section"><h1>Games</h1>'+games+'</section>')
+save('games.html','Games','<section class="section"><h1>Games</h1><div class="game-choice"><a class="choice-card" href="game-news.html"><span>📰</span><h2>Game News</h2><p>Development updates and playable demos</p></a><a class="choice-card" href="library.html"><span>🎮</span><h2>Games</h2><p>Browse our free-to-play games</p></a></div></section>')
+save('game-news.html','Game News','<section class="section"><h1>Game News</h1>'+games+'</section>')
+
+save('library.html','Free Games',game_library())
 save('blog.html','Development blog','<section class="section"><h1>Development blog</h1>'+posts+'</section>')
 save('about.html','About','<article class="article"><h1>About Potion Cannon Studios</h1><p>Replace this text with your studio story.</p></article>')
 save('contact.html','Contact','<article class="article"><h1>Contact</h1><p>Add your public business email or social links here.</p></article>')
