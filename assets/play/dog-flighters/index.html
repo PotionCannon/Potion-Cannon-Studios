@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Dog Flight</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Dog Flighters</title><style>
 html,body{margin:0;overflow:hidden;background:#77cfff;font-family:system-ui;color:white;touch-action:none}
 #aim-hud{position:fixed;left:50%;top:50%;width:180px;height:180px;transform:translate(-50%,-50%);pointer-events:none;z-index:4;filter:drop-shadow(0 1px 2px #1239)}
 #aim-hud svg{width:100%;height:100%;overflow:visible}
@@ -233,7 +233,26 @@ body.match-ended #kill-feed,body.match-ended #hit-marker-layer{display:none!impo
 
 /* Hide the old top-left title and flight statistics; preserve the altitude gauge and other gameplay UI. */
 #hud{display:none!important}
-</style></head><body class="menu-open"><div id="main-menu"><div id="menu-card"><h1>DOG FLIGHT</h1>
+
+/* Multiplayer entry controls: room codes require signaling before actual online play. */
+#connection-switch{display:flex;justify-content:center;gap:8px;pointer-events:auto}
+#connection-switch button{font-size:13px;padding:7px 15px;border-radius:9px}
+#connection-switch button[aria-pressed="true"]{background:#246d53!important;border-color:#a6ffce!important}
+#online-actions{display:flex;gap:8px;justify-content:center;pointer-events:auto}
+#online-actions[hidden],#room-code-display[hidden],#join-room-dialog[hidden]{display:none!important}
+#online-actions button{border-radius:9px;padding:8px 17px;font-size:14px}
+#room-code-display{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:45;background:#112c3de8;border:2px solid #c8ecff;border-radius:10px;padding:10px 13px;text-align:center;pointer-events:auto}
+#room-code-display strong{display:block;letter-spacing:.2em;font-size:22px}
+#room-code-display small{font-size:10px;display:block}
+#join-room-dialog{position:fixed;inset:0;z-index:100;pointer-events:auto;touch-action:manipulation;background:#071722d9;display:flex;align-items:center;justify-content:center;padding:16px}
+#join-room-panel{position:relative;z-index:101;pointer-events:auto;touch-action:manipulation;background:#143247;border:2px solid #c8ecff;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:12px;width:min(90vw,330px);text-align:center}
+#join-room-panel input{pointer-events:auto;touch-action:auto;user-select:text;-webkit-user-select:text;padding:12px;font-size:23px;letter-spacing:.18em;text-align:center;text-transform:uppercase;border-radius:8px;border:1px solid #b5d8e9;background:#fff;color:#122635}
+#join-room-panel button{pointer-events:auto;touch-action:manipulation;cursor:pointer;padding:10px;border-radius:8px}
+#connection-status{font-size:11px;max-width:380px;text-align:center;color:#ffe6ac;min-height:12px}
+</style></head><body class="menu-open"><div id="main-menu"><div id="menu-card"><h1>DOG FLIGHTERS</h1>
+<div id="connection-switch" role="group" aria-label="Connection mode"><button id="offline-choice" type="button" aria-pressed="true">✓ OFFLINE</button><button id="online-choice" type="button" aria-pressed="false">ONLINE</button></div>
+<div id="online-actions" hidden><button id="host-room" type="button">HOST</button><button id="join-room" type="button">JOIN</button></div>
+<div id="connection-status" aria-live="polite"></div>
 <div id="map-page" class="menu-page"><p>CHOOSE YOUR BATTLEFIELD</p>
 <div id="map-preview" aria-label="Live preview of the selected battlefield"><span class="preview-caption">LIVE MAP PREVIEW</span></div>
 <div class="menu-cycle" role="group" aria-label="Map selection"><button id="map-prev" type="button" aria-label="Previous map">‹</button><div class="cycle-center"><span class="cycle-caption">MAP 1 / 3</span><span id="map-name" class="cycle-value">River Valley</span></div><button id="map-next" type="button" aria-label="Next map">›</button></div>
@@ -258,7 +277,10 @@ body.match-ended #kill-feed,body.match-ended #hit-marker-layer{display:none!impo
 <div id="weapon-description" aria-live="polite"></div>
 <button id="weapon-done" class="menu-action" type="button">SELECT WEAPON</button>
 <button id="weapon-back" class="menu-back" type="button">BACK TO CUSTOMIZATION</button></div>
-</div></div><div id="endgame-announcement" hidden><div id="endgame-word">VICTORY</div></div><div id="match-result" hidden><div id="result-card"><h2 id="result-title">MATCH COMPLETE</h2><p id="result-detail"></p><button id="result-restart">NEW GAME</button><button id="result-menu">MAIN MENU</button></div></div><div id="kill-feed" aria-live="polite"></div><div id="hit-marker-layer" aria-hidden="true"></div><div id="damage-vignette" aria-hidden="true"></div><div id="pickup-notice" role="status" aria-live="polite"></div><div id="aim-hud" aria-hidden="true"><svg viewBox="0 0 180 180">
+</div></div>
+<div id="room-code-display" hidden><small>ROOM CODE</small><strong id="room-code-value"></strong><small>Waiting for multiplayer signaling</small></div>
+<div id="join-room-dialog" hidden><div id="join-room-panel"><strong>JOIN A ROOM</strong><input id="room-code-input" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="ROOM CODE" aria-label="Room code"><div id="join-room-status" role="status"></div><button id="confirm-join" type="button">JOIN ROOM</button><button id="cancel-join" type="button">CANCEL</button></div></div>
+<div id="endgame-announcement" hidden><div id="endgame-word">VICTORY</div></div><div id="match-result" hidden><div id="result-card"><h2 id="result-title">MATCH COMPLETE</h2><p id="result-detail"></p><button id="result-restart">NEW GAME</button><button id="result-menu">MAIN MENU</button></div></div><div id="kill-feed" aria-live="polite"></div><div id="hit-marker-layer" aria-hidden="true"></div><div id="damage-vignette" aria-hidden="true"></div><div id="pickup-notice" role="status" aria-live="polite"></div><div id="aim-hud" aria-hidden="true"><svg viewBox="0 0 180 180">
 <defs><clipPath id="attitude-clip"><circle cx="90" cy="90" r="47"/></clipPath></defs>
 <circle id="attitude-ring" cx="90" cy="90" r="47"/>
 <g clip-path="url(#attitude-clip)"><g id="horizon-rotator">
@@ -2287,7 +2309,7 @@ document.getElementById('spectator-next').addEventListener('pointerdown',e=>{e.p
 /* Spectator arrows alone switch pilots. Dragging the unobstructed view orbits locally around the airplane. */
 document.addEventListener('pointerdown',e=>{
  if(!gameStarted||matchFinished||!spectating||playerCrash.active||e.button!==0)return;
- if(e.target.closest('#match-result,#main-menu,.spectator-nav,#spectator-bottom'))return;
+ if(e.target.closest('#match-result,#main-menu,#join-room-dialog,.spectator-nav,#spectator-bottom'))return;
  if(spectatorOrbit.pointer!==null)return;
  spectatorInteracted=true;spectatorAutoCycleTime=0;spectatorOrbit.pointer=e.pointerId;
  spectatorOrbit.lastX=e.clientX;spectatorOrbit.lastY=e.clientY;
@@ -2307,7 +2329,7 @@ for(const eventName of ['pointerup','pointercancel'])document.addEventListener(e
 document.addEventListener('contextmenu',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
 document.addEventListener('selectstart',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
 document.addEventListener('dragstart',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
-document.addEventListener('touchstart',e=>{if(e.target.closest('#match-result'))return; if(!e.target.closest('#main-menu')&&e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},{passive:false,capture:true});
+document.addEventListener('touchstart',e=>{if(e.target.closest('#match-result'))return; if(!e.target.closest('#main-menu,#join-room-dialog')&&e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},{passive:false,capture:true});
 /* Analog yaw/pitch joystick: small dead zone, reduced response, and eased motion. */
 const joystick=document.getElementById('joystick'),knob=document.getElementById('joystick-knob');
 const stick={x:0,y:0,smoothedX:0,smoothedY:0,pointer:null,centerPress:false,moved:false,startX:0,startY:0};
@@ -2484,6 +2506,73 @@ let shot=0;const fireCooldown={regular:.05,double:.05,shotgun:.65,minigun:.032,s
 const clock=new THREE.Clock();
 // Menu stays active until START FLIGHT; only the static overlook is rendered.
 const mainMenu=document.getElementById('main-menu');
+
+// Room-code menu foundation. A room code is a lobby identifier, NOT a
+// peer-to-peer connection. Remote joining requires a signaling transport.
+// Never report a connection until the actual network handshake completes.
+const offlineChoice=document.getElementById('offline-choice');
+const onlineChoice=document.getElementById('online-choice');
+const onlineActions=document.getElementById('online-actions');
+const roomCodeDisplay=document.getElementById('room-code-display');
+const connectionStatus=document.getElementById('connection-status');
+const joinRoomDialog=document.getElementById('join-room-dialog');
+let connectionMode='offline';
+function setConnectionMode(mode){
+ connectionMode=mode;
+ offlineChoice.setAttribute('aria-pressed',String(mode==='offline'));
+ onlineChoice.setAttribute('aria-pressed',String(mode==='online'));
+ offlineChoice.textContent=mode==='offline'?'✓ OFFLINE':'OFFLINE';
+ onlineChoice.textContent=mode==='online'?'✓ ONLINE':'ONLINE';
+ onlineActions.hidden=mode!=='online';
+ roomCodeDisplay.hidden=true;
+ joinRoomDialog.hidden=true;
+ connectionStatus.textContent=mode==='online'?'Room-code interface ready. Connecting phones requires signaling, which is not yet configured.':'';
+}
+offlineChoice.addEventListener('click',()=>setConnectionMode('offline'));
+onlineChoice.addEventListener('click',()=>setConnectionMode('online'));
+document.getElementById('host-room').addEventListener('click',()=>{
+ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+ const random=new Uint8Array(6);crypto.getRandomValues(random);
+ document.getElementById('room-code-value').textContent=Array.from(random,n=>chars[n%chars.length]).join('');
+ roomCodeDisplay.hidden=false;
+ connectionStatus.textContent='Room created locally. A signaling service is required before another phone can join.';
+});
+document.getElementById('join-room').addEventListener('click',()=>{
+ document.getElementById('room-code-input').value='';
+ document.getElementById('join-room-status').textContent='';
+ joinRoomDialog.hidden=false;
+});
+const roomCodeInput=document.getElementById('room-code-input');
+const joinRoomStatus=document.getElementById('join-room-status');
+function closeJoinDialog(){
+ joinRoomDialog.hidden=true;
+ joinRoomStatus.textContent='';
+ roomCodeInput.blur();
+}
+function submitJoinCode(){
+ const code=roomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+ roomCodeInput.value=code;
+ if(code.length!==6){joinRoomStatus.textContent='Enter a valid six-character room code.';return;}
+ // The room-code screen is UI only: without signaling, no remote lobby
+ // can be found. Never pretend the user has joined a real match.
+ joinRoomStatus.textContent='Room '+code+' cannot be reached yet. Direct phone connections require a signaling exchange; networking is not installed.';
+ connectionStatus.textContent='Join requested for '+code+'. Multiplayer networking is not connected yet.';
+}
+const cancelJoinButton=document.getElementById('cancel-join');
+cancelJoinButton.addEventListener('pointerdown',e=>{e.stopPropagation();closeJoinDialog();});
+cancelJoinButton.addEventListener('click',e=>{e.stopPropagation();closeJoinDialog();});
+document.getElementById('confirm-join').addEventListener('click',submitJoinCode);
+roomCodeInput.addEventListener('keydown',e=>{
+ if(e.key==='Enter'){e.preventDefault();submitJoinCode();}
+ if(e.key==='Escape'){e.preventDefault();closeJoinDialog();}
+});
+joinRoomDialog.addEventListener('pointerdown',e=>e.stopPropagation());
+joinRoomDialog.addEventListener('pointerup',e=>e.stopPropagation());
+joinRoomDialog.addEventListener('click',e=>{
+ e.stopPropagation();
+ if(e.target===joinRoomDialog)closeJoinDialog();
+});
+
 // Only implemented guns are selectable. Future categories can be populated as weapons are built.
 const weaponCategories=[
  {name:'STANDARD',weapons:[{id:'double',name:'Double Machine Guns',description:'Twin wing-mounted guns fire together.'},{id:'shotgun',name:'Shotgun',description:'A devastating short-range spread of eight pellets.'},{id:'minigun',name:'Minigun',description:'Spins up into a furious stream of bullets; overheats if held too long.'},{id:'sniper',name:'Sniper Cannon',description:'A precision, high-speed heavy shell with a slow reload.'},{id:'rocket',name:'Rocket Launcher',description:'Slow explosive rockets with a wide blast.'},{id:'flak',name:'Flak Cannon',description:'Airburst shells explode near enemies into a damaging cloud.'},{id:'railgun',name:'Railgun',description:'Charge and fire a piercing shot that can hit multiple planes.'},{id:'ricochet',name:'Ricochet Gun',description:'Bullets rebound from buildings and terrain.'}]},
