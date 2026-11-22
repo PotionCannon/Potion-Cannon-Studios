@@ -239,7 +239,7 @@ body.match-ended #kill-feed,body.match-ended #hit-marker-layer{display:none!impo
 #connection-switch button{font-size:13px;padding:7px 15px;border-radius:9px}
 #connection-switch button[aria-pressed="true"]{background:#246d53!important;border-color:#a6ffce!important}
 #online-actions{display:flex;gap:8px;justify-content:center;pointer-events:auto}
-#online-actions[hidden],#room-code-display[hidden],#join-room-dialog[hidden]{display:none!important}
+#online-actions[hidden],#room-code-display[hidden],#join-room-dialog[hidden],#peer-panel[hidden]{display:none!important}
 #online-actions button{border-radius:9px;padding:8px 17px;font-size:14px}
 #room-code-display{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:45;background:#112c3de8;border:2px solid #c8ecff;border-radius:10px;padding:10px 13px;text-align:center;pointer-events:auto}
 #room-code-display strong{display:block;letter-spacing:.2em;font-size:22px}
@@ -247,7 +247,7 @@ body.match-ended #kill-feed,body.match-ended #hit-marker-layer{display:none!impo
 #join-room-dialog{position:fixed;inset:0;z-index:100;pointer-events:auto;touch-action:manipulation;background:#071722d9;display:flex;align-items:center;justify-content:center;padding:16px}
 #join-room-panel{position:relative;z-index:101;pointer-events:auto;touch-action:manipulation;background:#143247;border:2px solid #c8ecff;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:12px;width:min(90vw,330px);text-align:center}
 #join-room-panel input{pointer-events:auto;touch-action:auto;user-select:text;-webkit-user-select:text;padding:12px;font-size:23px;letter-spacing:.18em;text-align:center;text-transform:uppercase;border-radius:8px;border:1px solid #b5d8e9;background:#fff;color:#122635}
-#join-room-panel button{pointer-events:auto;touch-action:manipulation;cursor:pointer;padding:10px;border-radius:8px}
+#join-room-panel button{pointer-events:auto;touch-action:manipulation;cursor:pointer;padding:10px;border-radius:8px;min-height:48px}#cancel-join{background:#35556b;border:2px solid #c8ecff;position:relative;z-index:105}#join-room-dialog{isolation:isolate;z-index:2147483640}
 #connection-status{font-size:11px;max-width:380px;text-align:center;color:#ffe6ac;min-height:12px}
 </style></head><body class="menu-open"><div id="main-menu"><div id="menu-card"><h1>DOG FLIGHTERS</h1>
 <div id="connection-switch" role="group" aria-label="Connection mode"><button id="offline-choice" type="button" aria-pressed="true">✓ OFFLINE</button><button id="online-choice" type="button" aria-pressed="false">ONLINE</button></div>
@@ -278,8 +278,9 @@ body.match-ended #kill-feed,body.match-ended #hit-marker-layer{display:none!impo
 <button id="weapon-done" class="menu-action" type="button">SELECT WEAPON</button>
 <button id="weapon-back" class="menu-back" type="button">BACK TO CUSTOMIZATION</button></div>
 </div></div>
-<div id="room-code-display" hidden><small>ROOM CODE</small><strong id="room-code-value"></strong><small>Waiting for multiplayer signaling</small></div>
-<div id="join-room-dialog" hidden><div id="join-room-panel"><strong>JOIN A ROOM</strong><input id="room-code-input" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="ROOM CODE" aria-label="Room code"><div id="join-room-status" role="status"></div><button id="confirm-join" type="button">JOIN ROOM</button><button id="cancel-join" type="button">CANCEL</button></div></div>
+<div id="room-code-display" hidden><small>ROOM CODE</small><strong id="room-code-value"></strong><small id="room-code-hint">TAP TO COPY</small><button id="host-reply" type="button" style="display:block;margin:5px auto 0;font-size:11px;padding:5px">ENTER REPLY</button></div>
+<div id="peer-panel" hidden style="position:fixed;inset:0;z-index:9999;background:#081d2bdc;display:flex;align-items:center;justify-content:center;padding:12px"><div style="background:#17394b;border:2px solid #9dd9ff;border-radius:12px;padding:16px;width:min(90vw,360px);color:white;text-align:center"><strong id="peer-title">REPLY CODE</strong><p id="peer-help" style="font-size:13px"></p><textarea id="peer-out" readonly style="display:block;width:100%;box-sizing:border-box;height:65px;font-size:11px;touch-action:auto;user-select:text"></textarea><button id="peer-copy" type="button" style="width:100%;padding:12px">COPY REPLY CODE</button><div id="peer-input-section"><textarea id="peer-in" style="display:block;width:100%;box-sizing:border-box;height:75px;touch-action:auto;user-select:text"></textarea><button id="peer-apply" type="button">CONNECT</button></div><p id="peer-status" style="font-size:12px"></p><button id="peer-dismiss" type="button">CLOSE</button></div></div>
+<div id="join-room-dialog" hidden><div id="join-room-panel"><strong>JOIN A ROOM</strong><input id="room-code-input" type="text" maxlength="20000" style="font-size:13px;letter-spacing:normal" autocomplete="off" autocapitalize="characters" placeholder="PASTE ROOM CODE" aria-label="Room code"><div id="join-room-status" role="status"></div><button id="confirm-join" type="button">JOIN ROOM</button><button id="cancel-join" type="button">CANCEL</button></div></div>
 <div id="endgame-announcement" hidden><div id="endgame-word">VICTORY</div></div><div id="match-result" hidden><div id="result-card"><h2 id="result-title">MATCH COMPLETE</h2><p id="result-detail"></p><button id="result-restart">NEW GAME</button><button id="result-menu">MAIN MENU</button></div></div><div id="kill-feed" aria-live="polite"></div><div id="hit-marker-layer" aria-hidden="true"></div><div id="damage-vignette" aria-hidden="true"></div><div id="pickup-notice" role="status" aria-live="polite"></div><div id="aim-hud" aria-hidden="true"><svg viewBox="0 0 180 180">
 <defs><clipPath id="attitude-clip"><circle cx="90" cy="90" r="47"/></clipPath></defs>
 <circle id="attitude-ring" cx="90" cy="90" r="47"/>
@@ -2329,7 +2330,7 @@ for(const eventName of ['pointerup','pointercancel'])document.addEventListener(e
 document.addEventListener('contextmenu',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
 document.addEventListener('selectstart',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
 document.addEventListener('dragstart',e=>{if(e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},true);
-document.addEventListener('touchstart',e=>{if(e.target.closest('#match-result'))return; if(!e.target.closest('#main-menu,#join-room-dialog')&&e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},{passive:false,capture:true});
+document.addEventListener('touchstart',e=>{if(e.target.closest('#match-result'))return; if(!e.target.closest('#main-menu,#join-room-dialog,#room-code-display,#peer-panel')&&e.target.closest('button,[role="button"],#mobile'))e.preventDefault()},{passive:false,capture:true});
 /* Analog yaw/pitch joystick: small dead zone, reduced response, and eased motion. */
 const joystick=document.getElementById('joystick'),knob=document.getElementById('joystick-knob');
 const stick={x:0,y:0,smoothedX:0,smoothedY:0,pointer:null,centerPress:false,moved:false,startX:0,startY:0};
@@ -2510,6 +2511,109 @@ const mainMenu=document.getElementById('main-menu');
 // Room-code menu foundation. A room code is a lobby identifier, NOT a
 // peer-to-peer connection. Remote joining requires a signaling transport.
 // Never report a connection until the actual network handshake completes.
+
+const peerPanel=document.getElementById('peer-panel');
+const peerOut=document.getElementById('peer-out');
+const peerIn=document.getElementById('peer-in');
+const peerStatus=document.getElementById('peer-status');
+let rtc=null,rtcChannel=null,rtcRole='',rtcConnected=false,rtcRemotePlane=null,rtcSendTimer=0;
+function rtcStatus(msg){peerStatus.textContent=msg;connectionStatus.textContent=msg}
+function rtcDispose(){
+ rtcConnected=false;
+ try{rtcChannel?.close();rtc?.close()}catch(e){}
+ rtc=null;rtcChannel=null;
+ if(rtcRemotePlane){scene.remove(rtcRemotePlane);rtcRemotePlane=null}
+}
+function rtcPanel(role){
+ rtcRole=role;peerPanel.hidden=false;peerIn.value='';peerOut.value='';
+ document.getElementById('peer-title').textContent=role==='host'?'ENTER REPLY CODE':'REPLY CODE';
+ document.getElementById('peer-help').textContent=role==='host'?'Paste the reply code from the joining player.':'Send this reply code to the host to finish connecting.';
+ document.getElementById('peer-input-section').hidden=role!=='host';
+ document.getElementById('peer-out').hidden=role==='host';
+ document.getElementById('peer-copy').hidden=role==='host';
+}
+function rtcAttach(channel){
+ rtcChannel=channel;
+ channel.onopen=()=>{rtcConnected=true;rtcStatus('Direct phone connection established.');peerPanel.hidden=true};
+ channel.onclose=()=>{rtcConnected=false;rtcStatus('Other phone disconnected.')};
+ channel.onmessage=event=>{
+  let msg;try{msg=JSON.parse(event.data)}catch(e){return}
+  if(msg.type==='plane'&&Array.isArray(msg.p)&&Array.isArray(msg.q)){
+   if(!rtcRemotePlane){rtcRemotePlane=plane(0x55ddee);scene.add(rtcRemotePlane)}
+   rtcRemotePlane.position.fromArray(msg.p);
+   rtcRemotePlane.quaternion.fromArray(msg.q);
+   rtcRemotePlane.visible=msg.visible;
+  }
+  if(msg.type==='start'&&rtcRole==='join'&&!gameStarted){setMap(msg.map);startFlight()}
+ };
+}
+function rtcCreate(){
+ rtcDispose();
+ rtc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+ rtc.ondatachannel=e=>rtcAttach(e.channel);
+ rtc.onconnectionstatechange=()=>{
+  if(rtc.connectionState==='connected'){rtcConnected=true;rtcStatus('Direct phone connection established.');peerPanel.hidden=true}
+  if(['failed','disconnected'].includes(rtc.connectionState)){rtcConnected=false;rtcStatus('Connection '+rtc.connectionState+'. Try again.')}
+ };
+ return rtc;
+}
+async function rtcGather(pc){
+ if(pc.iceGatheringState==='complete')return;
+ await new Promise(resolve=>{
+  const timer=setTimeout(resolve,15000);
+  pc.addEventListener('icegatheringstatechange',function changed(){
+   if(pc.iceGatheringState==='complete'){clearTimeout(timer);pc.removeEventListener('icegatheringstatechange',changed);resolve()}
+  });
+ });
+}
+function rtcEncode(obj){return btoa(JSON.stringify(obj))}
+function rtcDecode(str){
+ const obj=JSON.parse(atob(str.trim().replace(/\s/g,'')));
+ if(!obj||!['offer','answer'].includes(obj.type)||typeof obj.sdp!=='string')throw Error('Invalid connection message');
+ return obj;
+}
+async function rtcHost(){
+ rtcRole='host';roomCodeDisplay.hidden=false;roomCodeDisplay.querySelector('#room-code-value').textContent='GENERATING';
+ try{
+  const pc=rtcCreate();rtcAttach(pc.createDataChannel('flight'));
+  await pc.setLocalDescription(await pc.createOffer());await rtcGather(pc);
+  peerOut.value=rtcEncode(pc.localDescription);
+  document.getElementById('room-code-value').textContent='ROOM CODE';
+  document.getElementById('room-code-hint').textContent='TAP TO COPY';
+ }catch(e){document.getElementById('room-code-value').textContent='ERROR';connectionStatus.textContent=e.message}
+}
+async function rtcApply(){
+ try{
+  const remote=rtcDecode(peerIn.value);
+  if(rtcRole==='join'){
+   if(remote.type!=='offer')throw Error('Expected host offer');
+   const pc=rtcCreate();
+   await pc.setRemoteDescription(remote);
+   await pc.setLocalDescription(await pc.createAnswer());
+   await rtcGather(pc);
+   peerOut.value=rtcEncode(pc.localDescription);
+   rtcPanel('join');peerOut.value=rtcEncode(pc.localDescription);rtcStatus('Copy this reply code and send it to the host.');
+  }else{
+   if(remote.type!=='answer'||!rtc)throw Error('Expected joining phone answer');
+   await rtc.setRemoteDescription(remote);
+   rtcStatus('Answer accepted. Establishing direct connection…');
+  }
+ }catch(e){rtcStatus('Cannot connect: '+e.message)}
+}
+document.getElementById('peer-apply').addEventListener('click',rtcApply);
+document.getElementById('peer-copy').addEventListener('click',async()=>{
+ try{await navigator.clipboard.writeText(peerOut.value);rtcStatus('Code copied. Send it to the other player.')}
+ catch(e){peerOut.focus();peerOut.select();rtcStatus('Select and copy the message manually.')}
+});
+document.getElementById('peer-dismiss').addEventListener('click',()=>{peerPanel.hidden=true});
+peerOut.addEventListener('click',()=>document.getElementById('peer-copy').click());
+
+function rtcSync(dt){
+ if(!rtcConnected||rtcChannel?.readyState!=='open'||!gameStarted)return;
+ rtcSendTimer+=dt;if(rtcSendTimer<.08)return;rtcSendTimer=0;
+ rtcChannel.send(JSON.stringify({type:'plane',p:player.position.toArray(),q:player.quaternion.toArray(),visible:player.visible}));
+}
+
 const offlineChoice=document.getElementById('offline-choice');
 const onlineChoice=document.getElementById('online-choice');
 const onlineActions=document.getElementById('online-actions');
@@ -2524,44 +2628,53 @@ function setConnectionMode(mode){
  offlineChoice.textContent=mode==='offline'?'✓ OFFLINE':'OFFLINE';
  onlineChoice.textContent=mode==='online'?'✓ ONLINE':'ONLINE';
  onlineActions.hidden=mode!=='online';
- roomCodeDisplay.hidden=true;
+ roomCodeDisplay.hidden=true;peerPanel.hidden=true;
  joinRoomDialog.hidden=true;
- connectionStatus.textContent=mode==='online'?'Room-code interface ready. Connecting phones requires signaling, which is not yet configured.':'';
+ connectionStatus.textContent='';if(mode==='offline')rtcDispose();
 }
 offlineChoice.addEventListener('click',()=>setConnectionMode('offline'));
 onlineChoice.addEventListener('click',()=>setConnectionMode('online'));
-document.getElementById('host-room').addEventListener('click',()=>{
- const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
- const random=new Uint8Array(6);crypto.getRandomValues(random);
- document.getElementById('room-code-value').textContent=Array.from(random,n=>chars[n%chars.length]).join('');
- roomCodeDisplay.hidden=false;
- connectionStatus.textContent='Room created locally. A signaling service is required before another phone can join.';
-});
+document.getElementById('host-room').addEventListener('click',()=>{rtcHost()});
+document.getElementById('room-code-value').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(peerOut.value);document.getElementById('room-code-hint').textContent='COPIED!'}catch(e){connectionStatus.textContent='Clipboard unavailable. Open the page on HTTPS.'}});
+document.getElementById('host-reply').addEventListener('click',()=>rtcPanel('host'));
 document.getElementById('join-room').addEventListener('click',()=>{
- document.getElementById('room-code-input').value='';
- document.getElementById('join-room-status').textContent='';
- joinRoomDialog.hidden=false;
+ roomCodeInput.value='';joinRoomStatus.textContent='';joinRoomDialog.hidden=false;
 });
 const roomCodeInput=document.getElementById('room-code-input');
 const joinRoomStatus=document.getElementById('join-room-status');
-function closeJoinDialog(){
- joinRoomDialog.hidden=true;
- joinRoomStatus.textContent='';
- roomCodeInput.blur();
-}
-function submitJoinCode(){
- const code=roomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
- roomCodeInput.value=code;
- if(code.length!==6){joinRoomStatus.textContent='Enter a valid six-character room code.';return;}
- // The room-code screen is UI only: without signaling, no remote lobby
- // can be found. Never pretend the user has joined a real match.
- joinRoomStatus.textContent='Room '+code+' cannot be reached yet. Direct phone connections require a signaling exchange; networking is not installed.';
- connectionStatus.textContent='Join requested for '+code+'. Multiplayer networking is not connected yet.';
+function closeJoinDialog(){joinRoomDialog.hidden=true;joinRoomStatus.textContent='';roomCodeInput.blur()}
+async function submitJoinCode(){
+ const code=roomCodeInput.value.trim();
+ if(!code){joinRoomStatus.textContent='Paste the host room code.';return}
+ closeJoinDialog();rtcRole='join';peerIn.value=code;await rtcApply();
 }
 const cancelJoinButton=document.getElementById('cancel-join');
-cancelJoinButton.addEventListener('pointerdown',e=>{e.stopPropagation();closeJoinDialog();});
-cancelJoinButton.addEventListener('click',e=>{e.stopPropagation();closeJoinDialog();});
-document.getElementById('confirm-join').addEventListener('click',submitJoinCode);
+// Handle the dialog actions at the capture phase, before global flight
+// touch controls can swallow the event. Suppress duplicate click activation.
+let joinDialogActionTime=0;
+function handleJoinDialogAction(e){
+ if(joinRoomDialog.hidden)return;
+ const target=e.target;
+ const cancel=target.closest?.('#cancel-join');
+ const confirm=target.closest?.('#confirm-join');
+ if(!cancel&&!confirm)return;
+ if(e.type==='pointerdown'&&e.pointerType==='mouse')return; // use click for mouse
+ if(e.type==='touchstart')return; // pointer events on modern mobile browsers
+ if(e.type==='click'&&performance.now()-joinDialogActionTime<450){
+  e.preventDefault();e.stopImmediatePropagation();return;
+ }
+ if(e.type==='pointerdown')joinDialogActionTime=performance.now();
+ e.preventDefault();
+ e.stopImmediatePropagation();
+ if(cancel)closeJoinDialog();
+ else submitJoinCode();
+}
+document.addEventListener('pointerdown',handleJoinDialogAction,true);
+document.addEventListener('click',handleJoinDialogAction,true);
+// Explicitly restore normal tap behavior within the dialog, overriding
+// the flight game's global touch-action:none rule.
+cancelJoinButton.style.touchAction='manipulation';
+
 roomCodeInput.addEventListener('keydown',e=>{
  if(e.key==='Enter'){e.preventDefault();submitJoinCode();}
  if(e.key==='Escape'){e.preventDefault();closeJoinDialog();}
@@ -2659,6 +2772,7 @@ document.getElementById('weapon-prev').addEventListener('click',()=>cycleWeapon(
 document.getElementById('weapon-next').addEventListener('click',()=>cycleWeapon(1));
 renderWeaponMenu();
 function startFlight(){
+ if(rtcRole==='host'&&rtcConnected&&rtcChannel?.readyState==='open')rtcChannel.send(JSON.stringify({type:'start',map:selectedMap}));
  updateMapBoundary();
  if(gameStarted||startFlightButton.disabled)return;
  resetAllPilots();
@@ -3379,5 +3493,5 @@ function updateFinalCrashSequence(dt){
   pending.hold=FINAL_CRASH_VIEW_HOLD;
  }
 }
-function loop(now=0){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);if(gameStarted&&!matchFinished){if(pendingMatchFinish)updateFinalCrashSequence(dt);else update(dt,clock.elapsedTime)}else if(!gameStarted){renderMenuCamera()}adjustMobileResolution(dt,now);renderer.render(scene,camera);if(!gameStarted&&!mapPage.hidden)renderMapPreview(now);else if(!gameStarted&&!customPage.hidden)renderCustomPlanePreview(now)}loop();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+function loop(now=0){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);if(gameStarted&&!matchFinished){rtcSync(dt);if(pendingMatchFinish)updateFinalCrashSequence(dt);else update(dt,clock.elapsedTime)}else if(!gameStarted){renderMenuCamera()}adjustMobileResolution(dt,now);renderer.render(scene,camera);if(!gameStarted&&!mapPage.hidden)renderMapPreview(now);else if(!gameStarted&&!customPage.hidden)renderCustomPlanePreview(now)}loop();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 </script></body></html>
